@@ -12,6 +12,17 @@ from typing import Any, Dict, Optional
 import yaml
 
 from .utils import logger
+from .utils.errors import (
+    ErrorCode,
+    ConfigurationError,
+    FileNotFoundError as ATFileNotFoundError,
+    FileReadError,
+    FileWriteError,
+    InvalidConfigurationError,
+    MissingConfigurationError,
+    ParsingError
+)
+from .utils.error_handler import with_error_handling
 
 
 class Config:
@@ -87,6 +98,11 @@ class Config:
         os.makedirs(save_dir, exist_ok=True)
         logger.info(f"Configuration initialized successfully")
 
+    @with_error_handling(
+        error_code=ErrorCode.FILE_READ_ERROR,
+        error_message="Error loading configuration file",
+        suggestion="Check that the configuration file exists and is valid YAML."
+    )
     def load_from_file(self, config_path: str) -> None:
         """
         Load configuration from a YAML file.
@@ -96,17 +112,39 @@ class Config:
 
         Raises:
             FileNotFoundError: If the configuration file does not exist.
-            yaml.YAMLError: If the configuration file is not valid YAML.
+            ParsingError: If the configuration file is not valid YAML.
+            FileReadError: If there's an error reading the file.
         """
+        config_path_str = str(config_path)
         config_path = Path(config_path)
+
         if not config_path.exists():
             logger.error(f"Configuration file not found: {config_path}")
-            raise FileNotFoundError(f"Configuration file not found: {config_path}")
+            raise ATFileNotFoundError(
+                config_path_str,
+                suggestion=f"Ensure the configuration file exists at '{config_path_str}' or specify a different path."
+            )
 
         try:
             logger.debug(f"Reading configuration file: {config_path}")
             with open(config_path, "r") as f:
-                file_config = yaml.safe_load(f)
+                try:
+                    file_config = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    # Extract line and column info if available
+                    line_info = ""
+                    if hasattr(e, 'problem_mark'):
+                        line_info = f" at line {e.problem_mark.line+1}, column {e.problem_mark.column+1}"
+
+                    raise ParsingError(
+                        f"Invalid YAML in configuration file: {config_path_str}{line_info}",
+                        details={
+                            "file_path": config_path_str,
+                            "error": str(e)
+                        },
+                        suggestion="Check the YAML syntax and ensure it's valid. Common issues include incorrect indentation, missing colons, or unbalanced quotes.",
+                        cause=e
+                    )
 
             if file_config:
                 logger.debug("Updating configuration with values from file")
@@ -115,12 +153,28 @@ class Config:
                 logger.info(f"Configuration loaded successfully from {config_path}")
             else:
                 logger.warning(f"Configuration file {config_path} is empty or invalid")
-        except yaml.YAMLError as e:
-            logger.exception(f"Error parsing YAML configuration file: {str(e)}")
+                raise InvalidConfigurationError(
+                    f"Configuration file {config_path_str} is empty or contains invalid YAML",
+                    suggestion="Ensure the configuration file contains valid YAML data."
+                )
+        except (ATFileNotFoundError, ParsingError, InvalidConfigurationError):
+            # Re-raise these specific exceptions
             raise
+        except PermissionError as e:
+            raise FileReadError(
+                config_path_str,
+                details={"error": str(e)},
+                suggestion="Check that you have permission to read this file.",
+                cause=e
+            )
         except Exception as e:
-            logger.exception(f"Unexpected error loading configuration file: {str(e)}")
-            raise
+            # Wrap any other exceptions
+            raise FileReadError(
+                config_path_str,
+                details={"error": str(e)},
+                suggestion="An unexpected error occurred while reading the configuration file.",
+                cause=e
+            )
 
     def _update_config(self, target: Dict, source: Dict) -> None:
         """
@@ -140,6 +194,35 @@ class Config:
             else:
                 target[key] = value
 
+    def _set_config_value(self, config_section: Dict, key: str, value: str) -> None:
+        """
+        Set a configuration value with appropriate type conversion.
+
+        Args:
+            config_section (Dict): The configuration section to update
+            key (str): The key to set
+            value (str): The string value from the environment variable
+        """
+        original_value = config_section[key]
+
+        # Convert the value to the appropriate type
+        if isinstance(original_value, bool):
+            config_section[key] = value.lower() in ("true", "1", "yes", "y")
+        elif isinstance(original_value, int):
+            try:
+                config_section[key] = int(value)
+            except ValueError:
+                logger.warning(f"Could not convert value '{value}' to int")
+        elif isinstance(original_value, float):
+            try:
+                config_section[key] = float(value)
+            except ValueError:
+                logger.warning(f"Could not convert value '{value}' to float")
+        else:
+            config_section[key] = value
+
+        logger.debug(f"Set {key} to {config_section[key]}")
+
     def _load_from_env(self) -> None:
         """
         Load configuration from environment variables.
@@ -154,79 +237,116 @@ class Config:
         for key, value in os.environ.items():
             if key.startswith(prefix):
                 logger.debug(f"Found environment variable: {key}={value}")
-                # Remove prefix and split into parts
-                parts = key[len(prefix) :].lower().split("_")
 
-                # Navigate to the right part of the config
-                config = self._config
-                for part in parts[:-1]:
-                    if part in config:
-                        config = config[part]
-                    else:
-                        # Skip this environment variable if the path doesn't exist
-                        logger.warning(
-                            f"Ignoring environment variable {key}: invalid configuration path"
-                        )
-                        break
-                else:
-                    # If we didn't break, set the value
-                    last_part = parts[-1]
-                    if last_part in config:
-                        # Try to convert the value to the appropriate type
-                        original_value = config[last_part]
-                        if isinstance(original_value, bool):
-                            config[last_part] = value.lower() in (
-                                "true",
-                                "1",
-                                "yes",
-                                "y",
-                            )
-                        elif isinstance(original_value, int):
-                            try:
-                                config[last_part] = int(value)
-                            except ValueError:
-                                logger.warning(
-                                    f"Could not convert environment variable {key} value '{value}' to int"
-                                )
-                                pass
-                        elif isinstance(original_value, float):
-                            try:
-                                config[last_part] = float(value)
-                            except ValueError:
-                                logger.warning(
-                                    f"Could not convert environment variable {key} value '{value}' to float"
-                                )
-                                pass
-                        else:
-                            config[last_part] = value
+                # Remove prefix and convert to lowercase
+                key_without_prefix = key[len(prefix):].lower()
 
-                        logger.debug(f"Applied environment variable {key}={value}")
+                # Special handling for known environment variables
+                if key_without_prefix == "ui_font_size":
+                    if "ui" in self._config and "font_size" in self._config["ui"]:
+                        try:
+                            self._config["ui"]["font_size"] = int(value)
+                            logger.debug(f"Set ui.font_size to {value}")
+                            env_vars_found += 1
+                            continue
+                        except ValueError:
+                            logger.warning(f"Could not convert {key}={value} to int")
+
+                if key_without_prefix == "ui_theme":
+                    if "ui" in self._config and "theme" in self._config["ui"]:
+                        self._config["ui"]["theme"] = value
+                        logger.debug(f"Set ui.theme to {value}")
                         env_vars_found += 1
-                    else:
-                        logger.warning(
-                            f"Ignoring environment variable {key}: key {last_part} not found in configuration"
-                        )
+                        continue
+
+                if key_without_prefix == "data_autosave":
+                    if "data" in self._config and "autosave" in self._config["data"]:
+                        self._config["data"]["autosave"] = value.lower() in ("true", "1", "yes", "y")
+                        logger.debug(f"Set data.autosave to {self._config['data']['autosave']}")
+                        env_vars_found += 1
+                        continue
+
+                # General case for other environment variables
+                parts = key_without_prefix.split("_")
+
+                # Try to find the right place in the config
+                if len(parts) >= 2:
+                    section = parts[0]
+                    if section in self._config:
+                        # Try different combinations for the key
+                        if len(parts) == 2:
+                            # Simple case: SECTION_KEY
+                            key_name = parts[1]
+                            if key_name in self._config[section]:
+                                self._set_config_value(self._config[section], key_name, value)
+                                env_vars_found += 1
+                                continue
+
+                        elif len(parts) >= 3:
+                            # Try SECTION_SUBSECTION_KEY
+                            subsection = parts[1]
+                            if subsection in self._config[section]:
+                                key_name = "_".join(parts[2:])
+                                if key_name in self._config[section][subsection]:
+                                    self._set_config_value(self._config[section][subsection], key_name, value)
+                                    env_vars_found += 1
+                                    continue
+
+                            # Try SECTION_KEY_WITH_UNDERSCORES
+                            key_name = "_".join(parts[1:])
+                            if key_name in self._config[section]:
+                                self._set_config_value(self._config[section], key_name, value)
+                                env_vars_found += 1
+                                continue
+
+                logger.warning(f"Ignoring environment variable {key}: could not map to configuration")
 
         if env_vars_found > 0:
             logger.info(
                 f"Applied {env_vars_found} configuration settings from environment variables"
             )
 
+    @with_error_handling(
+        error_code=ErrorCode.FILE_WRITE_ERROR,
+        error_message="Error saving configuration file",
+        suggestion="Check that you have permission to write to the specified location."
+    )
     def save_to_file(self, config_path: str) -> None:
         """
         Save the current configuration to a YAML file.
 
         Args:
             config_path (str): Path to save the configuration file.
+
+        Raises:
+            FileWriteError: If there's an error writing to the file.
         """
+        config_path_str = str(config_path)
         logger.info(f"Saving configuration to file: {config_path}")
+
         try:
+            # Ensure the directory exists
+            directory = os.path.dirname(config_path)
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+
             with open(config_path, "w") as f:
                 yaml.dump(self._config, f, default_flow_style=False)
             logger.info(f"Configuration saved successfully to {config_path}")
+        except PermissionError as e:
+            raise FileWriteError(
+                config_path_str,
+                details={"error": str(e)},
+                suggestion="Check that you have permission to write to this file and directory.",
+                cause=e
+            )
         except Exception as e:
-            logger.exception(f"Error saving configuration to {config_path}: {str(e)}")
-            raise
+            raise FileWriteError(
+                config_path_str,
+                details={"error": str(e)},
+                suggestion="An unexpected error occurred while saving the configuration file.",
+                cause=e
+            )
 
     def get(self, *keys: str, default: Any = None) -> Any:
         """
@@ -247,6 +367,11 @@ class Config:
                 return default
         return config
 
+    @with_error_handling(
+        error_code=ErrorCode.INVALID_CONFIGURATION,
+        error_message="Error setting configuration value",
+        suggestion="Check that the configuration key path is valid."
+    )
     def set(self, value: Any, *keys: str) -> None:
         """
         Set a configuration value.
@@ -256,11 +381,15 @@ class Config:
             *keys: The key path to the configuration value.
 
         Raises:
-            KeyError: If the key path is invalid.
+            InvalidConfigurationError: If the key path is invalid.
+            MissingConfigurationError: If no keys are provided.
         """
         if not keys:
             logger.error("Attempted to set configuration value with no keys provided")
-            raise KeyError("No keys provided")
+            raise MissingConfigurationError(
+                "No keys provided when setting configuration value",
+                suggestion="Provide at least one key when setting a configuration value."
+            )
 
         logger.debug(f"Setting configuration value at {'.'.join(keys)} to {value}")
 
@@ -273,7 +402,11 @@ class Config:
                 config = config[key]
             else:
                 logger.error(f"Invalid configuration key path: {keys}")
-                raise KeyError(f"Invalid key path: {keys}")
+                raise InvalidConfigurationError(
+                    f"Invalid configuration key path: {'.'.join(keys)}",
+                    details={"keys": keys, "invalid_key": key},
+                    suggestion=f"Ensure all parts of the key path except the last one refer to existing dictionary sections."
+                )
 
         if isinstance(config, dict):
             config[keys[-1]] = value
@@ -282,7 +415,11 @@ class Config:
             )
         else:
             logger.error(f"Invalid configuration key path: {keys}")
-            raise KeyError(f"Invalid key path: {keys}")
+            raise InvalidConfigurationError(
+                f"Invalid configuration key path: {'.'.join(keys)}",
+                details={"keys": keys, "invalid_key": keys[-1]},
+                suggestion=f"Ensure all parts of the key path except the last one refer to existing dictionary sections."
+            )
 
     @property
     def all(self) -> Dict:
