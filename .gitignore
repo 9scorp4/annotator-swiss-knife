@@ -70,3 +70,6 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+
+# Zip repository
+/zip

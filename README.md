@@ -7,6 +7,7 @@ A comprehensive yet simple toolkit designed to streamline various data annotatio
 * **Dictionary to Bullet List**: Convert dictionaries with URLs to formatted bullet lists with hyperlinks
 * **Text Cleaner**: Clean text from markdown/JSON/code artifacts and transform cleaned text back to code format
 * **JSON Visualizer**: Visualize and format JSON data with special handling for conversation data, XML tags, and malformed JSON repair
+* **Enhanced Error Handling**: Comprehensive error handling system with detailed error messages, error codes, and actionable suggestions
 
 ## Installation
 
@@ -272,6 +273,50 @@ To use a custom configuration file:
 annotation-toolkit --config config.yaml gui
 ```
 
+## Testing
+
+The toolkit includes a comprehensive test suite that ensures the reliability and correctness of all components. The tests are organized to mirror the structure of the main package, making it easy to locate tests for specific components.
+
+### Running Tests
+
+To run all tests:
+
+```bash
+python -m tests.run_tests
+```
+
+Or from the tests directory:
+
+```bash
+cd tests
+python run_tests.py
+```
+
+### Test Coverage
+
+You can generate a test coverage report:
+
+```bash
+python -m tests.run_tests --coverage
+```
+
+This requires the `pytest-cov` package, which can be installed via pip:
+
+```bash
+pip install pytest-cov
+```
+
+### Test Structure
+
+The test suite covers:
+
+- Core functionality (base classes, text tools, JSON tools)
+- Command-line interface
+- Configuration management
+- Utility modules (error handling, JSON parsing, text formatting)
+
+For more details about the test suite, see the [tests/README.md](tests/README.md) file.
+
 ## Building Standalone Executables
 
 For instructions on building standalone executables for macOS and Windows, see the [README_BUILD.md](README_BUILD.md) file.
@@ -286,6 +331,13 @@ annotator_swiss_knife/
 │   ├── run/                  # Scripts for running the application
 │   └── setup/                # Scripts for setting up the environment
 ├── tests/                    # Test suite
+│   ├── core/                 # Tests for core functionality
+│   ├── utils/                # Tests for utility modules
+│   ├── test_base.py          # Tests for base classes
+│   ├── test_cli.py           # Tests for command-line interface
+│   ├── test_config.py        # Tests for configuration management
+│   ├── run_tests.py          # Script to run all tests
+│   └── README.md             # Test suite documentation
 ├── .gitignore                # Git ignore file
 ├── README.md                 # Main documentation
 ├── README_BUILD.md           # Build instructions
@@ -303,6 +355,50 @@ The toolkit is designed to be easily extensible. To add a new annotation tool:
 4. Register your tool in the main application
 
 See the existing tools for examples.
+
+## Error Handling
+
+The toolkit includes a comprehensive error handling system that provides detailed and actionable error messages. This makes it easier to diagnose and resolve issues during development and in production.
+
+### Key Features
+
+* **Hierarchical Exception Classes**: Custom exception classes organized by error type
+* **Error Codes**: Enumerated error codes for categorizing errors
+* **Contextual Information**: Error messages include file, function, and line number information
+* **Actionable Suggestions**: Error messages include suggestions for resolving issues
+* **Error Handling Utilities**: Functions and decorators for consistent error handling
+
+### Using the Error Handling System
+
+```python
+from annotation_toolkit.utils import (
+    with_error_handling,
+    ErrorCode,
+    TypeValidationError
+)
+
+# Using decorators for automatic error handling
+@with_error_handling(
+    error_code=ErrorCode.PROCESSING_ERROR,
+    suggestion="Check the input data format"
+)
+def process_data(data):
+    # Function implementation
+    pass
+
+# Raising specific exceptions with context
+def validate_input(data):
+    if not isinstance(data, dict):
+        raise TypeValidationError(
+            "data",
+            dict,
+            type(data),
+            suggestion="Ensure you're passing a dictionary to validate_input."
+        )
+    # Validation logic
+```
+
+For more details, see the [Error Handling documentation](annotation_toolkit/utils/ERROR_HANDLING.md).
 
 ## License
 
