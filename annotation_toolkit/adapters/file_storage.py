@@ -11,6 +11,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from ..utils.file_utils import ensure_directory_exists, load_data_file, save_data_file
+from ..utils.errors import (
+    ErrorCode,
+    FileNotFoundError as ATFileNotFoundError,
+    FileReadError,
+    FileWriteError,
+    TypeValidationError,
+    ValueValidationError
+)
+from ..utils.error_handler import with_error_handling
 
 
 class FileStorage:
@@ -44,6 +53,11 @@ class FileStorage:
         else:
             return self.base_directory
 
+    @with_error_handling(
+        error_code=ErrorCode.FILE_WRITE_ERROR,
+        error_message="Error saving data to file",
+        suggestion="Check that the file format is supported and you have permission to write to the specified location."
+    )
     def save_data(
         self, data: Any, filename: str, subdirectory: Optional[str] = None
     ) -> Path:
@@ -60,7 +74,8 @@ class FileStorage:
             Path: The path to the saved file.
 
         Raises:
-            ValueError: If the file format is not supported.
+            ValueValidationError: If the file format is not supported.
+            FileWriteError: If there's an error writing to the file.
         """
         directory = self.get_directory(subdirectory)
         file_path = directory / filename
@@ -69,6 +84,11 @@ class FileStorage:
 
         return file_path
 
+    @with_error_handling(
+        error_code=ErrorCode.FILE_READ_ERROR,
+        error_message="Error loading data from file",
+        suggestion="Check that the file exists, is in a supported format, and you have permission to read it."
+    )
     def load_data(self, filename: str, subdirectory: Optional[str] = None) -> Any:
         """
         Load data from a file.
@@ -83,13 +103,19 @@ class FileStorage:
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            ValueError: If the file format is not supported.
+            ValueValidationError: If the file format is not supported.
+            FileReadError: If there's an error reading the file.
         """
         directory = self.get_directory(subdirectory)
         file_path = directory / filename
 
         return load_data_file(file_path)
 
+    @with_error_handling(
+        error_code=ErrorCode.FILE_READ_ERROR,
+        error_message="Error listing files",
+        suggestion="Check that the directory exists and you have permission to read it."
+    )
     def list_files(
         self, extension: Optional[str] = None, subdirectory: Optional[str] = None
     ) -> List[Path]:
@@ -107,6 +133,7 @@ class FileStorage:
 
         Raises:
             FileNotFoundError: If the directory does not exist.
+            FileReadError: If there's an error reading the directory.
         """
         directory = self.get_directory(subdirectory)
 
@@ -163,6 +190,11 @@ class FileStorage:
 
         return file_path.exists()
 
+    @with_error_handling(
+        error_code=ErrorCode.FILE_WRITE_ERROR,
+        error_message="Error deleting file",
+        suggestion="Check that the file exists and you have permission to delete it."
+    )
     def delete_file(self, filename: str, subdirectory: Optional[str] = None) -> None:
         """
         Delete a file.
@@ -174,14 +206,34 @@ class FileStorage:
 
         Raises:
             FileNotFoundError: If the file does not exist.
+            FileWriteError: If there's an error deleting the file.
         """
         directory = self.get_directory(subdirectory)
         file_path = directory / filename
+        file_path_str = str(file_path)
 
         if not file_path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
+            raise ATFileNotFoundError(
+                file_path_str,
+                suggestion=f"The file '{filename}' does not exist in the specified directory."
+            )
 
-        file_path.unlink()
+        try:
+            file_path.unlink()
+        except PermissionError as e:
+            raise FileWriteError(
+                file_path_str,
+                details={"error": str(e)},
+                suggestion="Check that you have permission to delete this file.",
+                cause=e
+            )
+        except Exception as e:
+            raise FileWriteError(
+                file_path_str,
+                details={"error": str(e)},
+                suggestion="An unexpected error occurred while deleting the file.",
+                cause=e
+            )
 
 
 class ConversationStorage(FileStorage):
@@ -226,6 +278,11 @@ class ConversationStorage(FileStorage):
                 data, "conversation", "json", self.conversations_dir
             )
 
+    @with_error_handling(
+        error_code=ErrorCode.PARSING_ERROR,
+        error_message="Error loading conversation",
+        suggestion="Check that the file contains a valid conversation format."
+    )
     def load_conversation(self, filename: str) -> List[Dict[str, str]]:
         """
         Load a conversation from a file.
@@ -238,7 +295,8 @@ class ConversationStorage(FileStorage):
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            ValueError: If the file format is not supported or the data is invalid.
+            ValueValidationError: If the file format is not supported or the data is invalid.
+            FileReadError: If there's an error reading the file.
         """
         data = self.load_data(filename, self.conversations_dir)
 
@@ -246,16 +304,36 @@ class ConversationStorage(FileStorage):
             return data["chat_history"]
         elif isinstance(data, list):
             # Check if the data is a valid conversation
-            for msg in data:
-                if (
-                    not isinstance(msg, dict)
-                    or "content" not in msg
-                    or "role" not in msg
-                ):
-                    raise ValueError("Invalid conversation format")
+            for i, msg in enumerate(data):
+                if not isinstance(msg, dict):
+                    raise TypeValidationError(
+                        f"message[{i}]",
+                        dict,
+                        type(msg),
+                        suggestion="Each message in a conversation must be a dictionary."
+                    )
+                if "content" not in msg:
+                    raise ValueValidationError(
+                        f"message[{i}]",
+                        msg,
+                        "must contain 'content' field",
+                        suggestion="Each message must have a 'content' field."
+                    )
+                if "role" not in msg:
+                    raise ValueValidationError(
+                        f"message[{i}]",
+                        msg,
+                        "must contain 'role' field",
+                        suggestion="Each message must have a 'role' field."
+                    )
             return data
         else:
-            raise ValueError("Invalid conversation format")
+            raise ValueValidationError(
+                "conversation",
+                data,
+                "must be a list of messages or a dictionary with a 'chat_history' field",
+                suggestion="Ensure the file contains a valid conversation format."
+            )
 
     def list_conversations(self) -> List[Path]:
         """
@@ -307,6 +385,11 @@ class DictionaryStorage(FileStorage):
                 dictionary, "dictionary", "json", self.dictionaries_dir
             )
 
+    @with_error_handling(
+        error_code=ErrorCode.PARSING_ERROR,
+        error_message="Error loading dictionary",
+        suggestion="Check that the file contains a valid dictionary format."
+    )
     def load_dictionary(self, filename: str) -> Dict[str, str]:
         """
         Load a dictionary from a file.
@@ -319,18 +402,28 @@ class DictionaryStorage(FileStorage):
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            ValueError: If the file format is not supported or the data is invalid.
+            TypeValidationError: If the data is not a dictionary.
+            ValueValidationError: If the dictionary values are not strings.
+            FileReadError: If there's an error reading the file.
         """
         data = self.load_data(filename, self.dictionaries_dir)
 
         if not isinstance(data, dict):
-            raise ValueError("Invalid dictionary format")
+            raise TypeValidationError(
+                "dictionary",
+                dict,
+                type(data),
+                suggestion="The file must contain a valid JSON dictionary."
+            )
 
         # Ensure all values are strings
         for key, value in data.items():
             if not isinstance(value, str):
-                raise ValueError(
-                    f"Dictionary values must be strings. Found non-string value for key '{key}'"
+                raise TypeValidationError(
+                    f"dictionary['{key}']",
+                    str,
+                    type(value),
+                    suggestion="All dictionary values must be strings."
                 )
 
         return data

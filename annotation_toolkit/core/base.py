@@ -10,6 +10,12 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 from ..utils import logger
+from ..utils.errors import (
+    ErrorCode,
+    ProcessingError,
+    TypeValidationError,
+    safe_execute
+)
 
 
 class AnnotationTool(ABC):
@@ -96,7 +102,13 @@ class TextAnnotationTool(AnnotationTool):
             return result
         except Exception as e:
             logger.exception(f"{tool_name}: Error processing text data: {str(e)}")
-            raise ToolExecutionError(f"Error processing text data: {str(e)}") from e
+            raise ProcessingError(
+                f"Error processing text data: {str(e)}",
+                error_code=ErrorCode.PROCESSING_ERROR,
+                details={"tool": tool_name, "data_type": type(data).__name__},
+                suggestion="Check the input text format and ensure it's compatible with this tool.",
+                cause=e
+            )
 
 
 class JsonAnnotationTool(AnnotationTool):
@@ -131,9 +143,13 @@ class JsonAnnotationTool(AnnotationTool):
         logger.info(f"{tool_name}: Processing JSON data")
 
         if not isinstance(data, (dict, list)):
-            error_msg = "Input data must be a JSON-compatible object (dict or list)"
-            logger.error(f"{tool_name}: {error_msg}, got {type(data).__name__}")
-            raise TypeError(error_msg)
+            raise TypeValidationError(
+                "input_data",
+                [dict, list],
+                type(data),
+                details={"tool": tool_name},
+                suggestion="Ensure you're passing a valid JSON object (dictionary or list) to this tool."
+            )
 
         try:
             result = self.process_json(data)
@@ -141,32 +157,15 @@ class JsonAnnotationTool(AnnotationTool):
             return result
         except Exception as e:
             logger.exception(f"{tool_name}: Error processing JSON data: {str(e)}")
-            raise ToolExecutionError(f"Error processing JSON data: {str(e)}") from e
+            raise ProcessingError(
+                f"Error processing JSON data: {str(e)}",
+                error_code=ErrorCode.PROCESSING_ERROR,
+                details={"tool": tool_name, "data_type": type(data).__name__},
+                suggestion="Check the JSON structure and ensure it meets the requirements for this tool.",
+                cause=e
+            )
 
 
-class ToolConfigurationError(Exception):
-    """Exception raised for errors in tool configuration."""
-
-    def __init__(self, message: str):
-        """
-        Initialize the exception.
-
-        Args:
-            message (str): The error message.
-        """
-        super().__init__(message)
-        logger.error(f"Tool configuration error: {message}")
-
-
-class ToolExecutionError(Exception):
-    """Exception raised for errors during tool execution."""
-
-    def __init__(self, message: str):
-        """
-        Initialize the exception.
-
-        Args:
-            message (str): The error message.
-        """
-        super().__init__(message)
-        logger.error(f"Tool execution error: {message}")
+# Import the configuration error from the errors module
+from ..utils.errors import ConfigurationError as ToolConfigurationError
+from ..utils.errors import ProcessingError as ToolExecutionError

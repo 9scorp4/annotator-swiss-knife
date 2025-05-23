@@ -12,6 +12,18 @@ from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
+from .errors import (
+    ErrorCode,
+    FileNotFoundError as ATFileNotFoundError,
+    FileReadError,
+    FileWriteError,
+    IOError,
+    ParsingError,
+    TypeValidationError,
+    ValueValidationError,
+    safe_execute
+)
+
 
 def ensure_directory_exists(directory_path: Union[str, Path]) -> Path:
     """
@@ -40,10 +52,43 @@ def load_json(file_path: Union[str, Path]) -> Union[Dict, List]:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        json.JSONDecodeError: If the file is not valid JSON.
+        ParsingError: If the file is not valid JSON.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    file_path_str = str(file_path)
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError as e:
+                raise ParsingError(
+                    f"Invalid JSON in file: {file_path_str}",
+                    details={
+                        "file_path": file_path_str,
+                        "error_position": f"line {e.lineno}, column {e.colno}",
+                        "error_message": e.msg
+                    },
+                    suggestion="Check the JSON syntax and ensure it's valid. Common issues include missing commas, unbalanced brackets, or invalid escape sequences.",
+                    cause=e
+                )
+    except FileNotFoundError as e:
+        raise ATFileNotFoundError(
+            file_path_str,
+            suggestion="Verify the file path and ensure the file exists.",
+            cause=e
+        )
+    except PermissionError as e:
+        raise FileReadError(
+            file_path_str,
+            details={"error": str(e)},
+            suggestion="Check that you have permission to read this file.",
+            cause=e
+        )
+    except Exception as e:
+        raise FileReadError(
+            file_path_str,
+            details={"error": str(e)},
+            cause=e
+        )
 
 
 def save_json(data: Union[Dict, List], file_path: Union[str, Path], **kwargs) -> None:
@@ -56,18 +101,54 @@ def save_json(data: Union[Dict, List], file_path: Union[str, Path], **kwargs) ->
         **kwargs: Additional arguments to pass to json.dump.
 
     Raises:
-        TypeError: If the data is not JSON-serializable.
+        TypeValidationError: If the data is not a dictionary or list.
+        FileWriteError: If there's an error writing to the file.
     """
+    file_path_str = str(file_path)
+
+    # Validate input type
+    if not isinstance(data, (dict, list)):
+        raise TypeValidationError(
+            "data",
+            [dict, list],
+            type(data),
+            suggestion="Ensure you're passing a dictionary or list to save_json."
+        )
+
     # Set default kwargs for consistent output
     kwargs.setdefault("indent", 2)
     kwargs.setdefault("ensure_ascii", False)
 
-    # Ensure the directory exists
-    directory = Path(file_path).parent
-    ensure_directory_exists(directory)
+    try:
+        # Ensure the directory exists
+        directory = Path(file_path).parent
+        ensure_directory_exists(directory)
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, **kwargs)
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, **kwargs)
+        except TypeError as e:
+            raise TypeValidationError(
+                "data",
+                "JSON-serializable object",
+                type(data),
+                details={"error": str(e)},
+                suggestion="Ensure all values in your data structure are JSON-serializable (strings, numbers, booleans, lists, dictionaries, or null).",
+                cause=e
+            )
+    except PermissionError as e:
+        raise FileWriteError(
+            file_path_str,
+            details={"error": str(e)},
+            suggestion="Check that you have permission to write to this file and directory.",
+            cause=e
+        )
+    except Exception as e:
+        raise FileWriteError(
+            file_path_str,
+            details={"error": str(e)},
+            cause=e
+        )
 
 
 def load_yaml(file_path: Union[str, Path]) -> Dict:
@@ -82,10 +163,47 @@ def load_yaml(file_path: Union[str, Path]) -> Dict:
 
     Raises:
         FileNotFoundError: If the file does not exist.
-        yaml.YAMLError: If the file is not valid YAML.
+        ParsingError: If the file is not valid YAML.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    file_path_str = str(file_path)
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            try:
+                return yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                # Extract line and column info if available
+                line_info = ""
+                if hasattr(e, 'problem_mark'):
+                    line_info = f" at line {e.problem_mark.line+1}, column {e.problem_mark.column+1}"
+
+                raise ParsingError(
+                    f"Invalid YAML in file: {file_path_str}{line_info}",
+                    details={
+                        "file_path": file_path_str,
+                        "error": str(e)
+                    },
+                    suggestion="Check the YAML syntax and ensure it's valid. Common issues include incorrect indentation, missing colons, or unbalanced quotes.",
+                    cause=e
+                )
+    except FileNotFoundError as e:
+        raise ATFileNotFoundError(
+            file_path_str,
+            suggestion="Verify the file path and ensure the file exists.",
+            cause=e
+        )
+    except PermissionError as e:
+        raise FileReadError(
+            file_path_str,
+            details={"error": str(e)},
+            suggestion="Check that you have permission to read this file.",
+            cause=e
+        )
+    except Exception as e:
+        raise FileReadError(
+            file_path_str,
+            details={"error": str(e)},
+            cause=e
+        )
 
 
 def save_yaml(data: Dict, file_path: Union[str, Path]) -> None:
@@ -97,14 +215,48 @@ def save_yaml(data: Dict, file_path: Union[str, Path]) -> None:
         file_path (Union[str, Path]): Path to save the file.
 
     Raises:
-        yaml.YAMLError: If the data is not YAML-serializable.
+        TypeValidationError: If the data is not a dictionary.
+        FileWriteError: If there's an error writing to the file.
     """
-    # Ensure the directory exists
-    directory = Path(file_path).parent
-    ensure_directory_exists(directory)
+    file_path_str = str(file_path)
 
-    with open(file_path, "w", encoding="utf-8") as f:
-        yaml.dump(data, f, default_flow_style=False)
+    # Validate input type
+    if not isinstance(data, dict):
+        raise TypeValidationError(
+            "data",
+            dict,
+            type(data),
+            suggestion="Ensure you're passing a dictionary to save_yaml."
+        )
+
+    try:
+        # Ensure the directory exists
+        directory = Path(file_path).parent
+        ensure_directory_exists(directory)
+
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                yaml.dump(data, f, default_flow_style=False)
+        except yaml.YAMLError as e:
+            raise ParsingError(
+                f"Failed to serialize data to YAML: {str(e)}",
+                details={"file_path": file_path_str},
+                suggestion="Ensure all values in your data structure are YAML-serializable.",
+                cause=e
+            )
+    except PermissionError as e:
+        raise FileWriteError(
+            file_path_str,
+            details={"error": str(e)},
+            suggestion="Check that you have permission to write to this file and directory.",
+            cause=e
+        )
+    except Exception as e:
+        raise FileWriteError(
+            file_path_str,
+            details={"error": str(e)},
+            cause=e
+        )
 
 
 def get_file_extension(file_path: Union[str, Path]) -> str:
@@ -160,20 +312,33 @@ def load_data_file(file_path: Union[str, Path]) -> Any:
         Any: The loaded data.
 
     Raises:
-        ValueError: If the file format is not supported.
         FileNotFoundError: If the file does not exist.
+        ValueValidationError: If the file format is not supported.
+        FileReadError: If there's an error reading the file.
+        ParsingError: If there's an error parsing the file content.
     """
     file_path = Path(file_path)
+    file_path_str = str(file_path)
 
     if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+        raise ATFileNotFoundError(
+            file_path_str,
+            suggestion="Verify the file path and ensure the file exists."
+        )
 
     if is_json_file(file_path):
         return load_json(file_path)
     elif is_yaml_file(file_path):
         return load_yaml(file_path)
     else:
-        raise ValueError(f"Unsupported file format: {file_path}")
+        extension = get_file_extension(file_path)
+        raise ValueValidationError(
+            "file_extension",
+            extension,
+            "must be json, yaml, or yml",
+            details={"file_path": file_path_str},
+            suggestion="Use a supported file format (JSON or YAML) or implement a custom loader for this file type."
+        )
 
 
 def save_data_file(data: Any, file_path: Union[str, Path]) -> None:
@@ -187,16 +352,26 @@ def save_data_file(data: Any, file_path: Union[str, Path]) -> None:
         file_path (Union[str, Path]): Path to save the file.
 
     Raises:
-        ValueError: If the file format is not supported.
+        ValueValidationError: If the file format is not supported.
+        TypeValidationError: If the data type is not compatible with the file format.
+        FileWriteError: If there's an error writing to the file.
     """
     file_path = Path(file_path)
+    file_path_str = str(file_path)
 
     if is_json_file(file_path):
         save_json(data, file_path)
     elif is_yaml_file(file_path):
         save_yaml(data, file_path)
     else:
-        raise ValueError(f"Unsupported file format: {file_path}")
+        extension = get_file_extension(file_path)
+        raise ValueValidationError(
+            "file_extension",
+            extension,
+            "must be json, yaml, or yml",
+            details={"file_path": file_path_str},
+            suggestion="Use a supported file format (JSON or YAML) or implement a custom saver for this file type."
+        )
 
 
 def list_files(
@@ -215,16 +390,38 @@ def list_files(
 
     Raises:
         FileNotFoundError: If the directory does not exist.
+        FileReadError: If there's an error reading the directory.
     """
     directory = Path(directory)
+    directory_str = str(directory)
 
-    if not directory.exists():
-        raise FileNotFoundError(f"Directory not found: {directory}")
+    try:
+        if not directory.exists():
+            raise ATFileNotFoundError(
+                directory_str,
+                details={"type": "directory"},
+                suggestion="Verify the directory path and ensure it exists."
+            )
 
-    if extension:
-        # Ensure extension starts with a dot
-        if not extension.startswith("."):
-            extension = f".{extension}"
-        return [f for f in directory.glob(f"*{extension}")]
-    else:
-        return [f for f in directory.glob("*") if f.is_file()]
+        try:
+            if extension:
+                # Ensure extension starts with a dot
+                if not extension.startswith("."):
+                    extension = f".{extension}"
+                return [f for f in directory.glob(f"*{extension}")]
+            else:
+                return [f for f in directory.glob("*") if f.is_file()]
+        except Exception as e:
+            raise FileReadError(
+                directory_str,
+                details={"error": str(e), "type": "directory"},
+                suggestion="Check permissions and ensure the path is a valid directory.",
+                cause=e
+            )
+    except PermissionError as e:
+        raise FileReadError(
+            directory_str,
+            details={"error": str(e), "type": "directory"},
+            suggestion="Check that you have permission to read this directory.",
+            cause=e
+        )

@@ -19,6 +19,20 @@ from .ui.cli.commands import (
     run_text_cleaner_command,
 )
 from .utils import logger
+from .utils.errors import (
+    AnnotationToolkitError,
+    ConfigurationError,
+    ErrorCode,
+    FileNotFoundError as ATFileNotFoundError,
+    FileReadError,
+    ParsingError,
+    ProcessingError
+)
+from .utils.error_handler import (
+    handle_errors,
+    format_error_for_user,
+    with_error_handling
+)
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -111,6 +125,56 @@ def create_parser() -> argparse.ArgumentParser:
     return parser
 
 
+@with_error_handling(
+    error_code=ErrorCode.PROCESSING_ERROR,
+    error_message="Error executing command",
+    suggestion="Check the command arguments and ensure they are valid."
+)
+def execute_command(parsed_args: argparse.Namespace, config: Config) -> int:
+    """
+    Execute the selected command.
+
+    Args:
+        parsed_args: The parsed command-line arguments.
+        config: The application configuration.
+
+    Returns:
+        int: Exit code.
+
+    Raises:
+        ProcessingError: If there's an error executing the command.
+    """
+    if parsed_args.command == "dict2bullet":
+        logger.info(
+            f"Running dict2bullet command with input file: {parsed_args.input_file}"
+        )
+        return run_dict_to_bullet_command(parsed_args, config)
+    elif parsed_args.command == "jsonvis":
+        logger.info(
+            f"Running jsonvis command with input file: {parsed_args.input_file}"
+        )
+        return run_json_visualizer_command(parsed_args, config)
+    elif parsed_args.command == "textclean":
+        logger.info(
+            f"Running textclean command with input file: {parsed_args.input_file}"
+        )
+        return run_text_cleaner_command(parsed_args, config)
+    elif parsed_args.command == "gui":
+        logger.info("Launching GUI application")
+        # Import here to avoid circular imports
+        from .ui.gui.app import run_application
+
+        run_application()
+        return 0
+    else:
+        logger.warning(f"Unknown command: {parsed_args.command}")
+        raise ProcessingError(
+            f"Unknown command: {parsed_args.command}",
+            error_code=ErrorCode.INVALID_INPUT,
+            suggestion="Use one of the available commands: dict2bullet, jsonvis, textclean, or gui."
+        )
+
+
 def main(args: Optional[Sequence[str]] = None) -> int:
     """
     Main entry point for the command-line interface.
@@ -143,42 +207,33 @@ def main(args: Optional[Sequence[str]] = None) -> int:
             logger.info("Loading default configuration")
             config = Config()
         logger.debug(f"Configuration loaded successfully")
+    except AnnotationToolkitError as e:
+        # Format the error for display to the user
+        error_message = format_error_for_user(e)
+        logger.error(f"Failed to load configuration: {error_message}")
+        print(f"Error loading configuration: {error_message}", file=sys.stderr)
+        return 1
     except Exception as e:
-        logger.exception(f"Failed to load configuration: {str(e)}")
-        print(f"Error loading configuration: {str(e)}", file=sys.stderr)
+        logger.exception(f"Unexpected error loading configuration: {str(e)}")
+        print(f"Unexpected error loading configuration: {str(e)}", file=sys.stderr)
         return 1
 
     # Process commands
     try:
-        if parsed_args.command == "dict2bullet":
-            logger.info(
-                f"Running dict2bullet command with input file: {parsed_args.input_file}"
-            )
-            return run_dict_to_bullet_command(parsed_args, config)
-        elif parsed_args.command == "jsonvis":
-            logger.info(
-                f"Running jsonvis command with input file: {parsed_args.input_file}"
-            )
-            return run_json_visualizer_command(parsed_args, config)
-        elif parsed_args.command == "textclean":
-            logger.info(
-                f"Running textclean command with input file: {parsed_args.input_file}"
-            )
-            return run_text_cleaner_command(parsed_args, config)
-        elif parsed_args.command == "gui":
-            logger.info("Launching GUI application")
-            # Import here to avoid circular imports
-            from .ui.gui.app import run_application
-
-            run_application()
-            return 0
-        else:
-            logger.warning(f"Unknown command: {parsed_args.command}")
+        if not parsed_args.command:
             parser.print_help()
-            return 1
+            return 0
+
+        return execute_command(parsed_args, config)
+    except AnnotationToolkitError as e:
+        # Format the error for display to the user
+        error_message = format_error_for_user(e)
+        logger.error(f"Error executing command {parsed_args.command}: {error_message}")
+        print(f"Error: {error_message}", file=sys.stderr)
+        return 1
     except Exception as e:
-        logger.exception(f"Error executing command {parsed_args.command}: {str(e)}")
-        print(f"Error: {str(e)}", file=sys.stderr)
+        logger.exception(f"Unexpected error executing command {parsed_args.command}: {str(e)}")
+        print(f"Unexpected error: {str(e)}", file=sys.stderr)
         return 1
 
 
