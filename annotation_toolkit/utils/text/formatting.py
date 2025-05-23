@@ -68,7 +68,7 @@ def extract_url_title(url: str) -> str:
             title = title_match.group(1).strip()
             # Limit the title length
             if len(title) > 50:
-                title = title[:47] + "..."
+                title = title[:50] + "..."
             return title
     except Exception:
         # If anything goes wrong, fall back to formatting the URL
