@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QColor, QFont, QIcon
 from PyQt5.QtWidgets import (
     QApplication,
     QFileDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -58,89 +60,253 @@ class DictToBulletWidget(QWidget):
         """
         Initialize the user interface.
         """
-        # Main layout
+        # Main layout with better spacing and margins
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(12)
 
-        # Create a splitter for input and output panes
+        # Create a splitter for input and output panes with better styling
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setHandleWidth(8)
+        splitter.setStyleSheet(
+            """
+            QSplitter::handle {
+                background-color: #e0e0e0;
+                border-radius: 4px;
+            }
+            QSplitter::handle:hover {
+                background-color: #2196F3;
+            }
+        """
+        )
 
-        # Input section
-        input_widget = QWidget()
+        # Input section with card-like styling - theme-aware
+        input_widget = QFrame()
+        input_widget.setObjectName("inputFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+
+        # Add shadow to input frame
+        input_shadow = QGraphicsDropShadowEffect()
+        input_shadow.setBlurRadius(15)
+        input_shadow.setXOffset(0)
+        input_shadow.setYOffset(2)
+        input_shadow.setColor(QColor(0, 0, 0, 30))
+        input_widget.setGraphicsEffect(input_shadow)
+
         input_layout = QVBoxLayout(input_widget)
+        input_layout.setContentsMargins(15, 15, 15, 15)
+        input_layout.setSpacing(10)
 
         input_label = QLabel("Input Dictionary (JSON format):")
-        input_label.setFont(QFont("Arial", 12))
+        input_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        input_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
+
         self.input_text = PlainTextEdit()
+        self.input_text.setFont(QFont("Courier New", 12))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.input_text.setPlaceholderText(
             'Paste your dictionary here in JSON format, e.g.:\n{\n    "1": "https://www.example.com/page1",\n    "2": "https://www.example.com/page2"\n}'
         )
 
-        # Button container
-        button_layout = QHBoxLayout()
+        # Button container with better styling - theme-aware
+        button_frame = QFrame()
+        button_frame.setObjectName("buttonFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+        button_layout = QHBoxLayout(button_frame)
+        button_layout.setContentsMargins(10, 8, 10, 8)
+        button_layout.setSpacing(10)
 
-        # Load button
-        load_btn = QPushButton("Load From File")
+        # Load button with icon and modern styling
+        load_btn = QPushButton(" Load From File")
+        load_btn.setIcon(
+            QIcon.fromTheme("document-open", QIcon.fromTheme("folder-open"))
+        )
+        load_btn.setCursor(Qt.PointingHandCursor)
+        load_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """
+        )
         load_btn.clicked.connect(self._load_from_file)
         button_layout.addWidget(load_btn)
 
-        # Sample data button
-        sample_btn = QPushButton("Load Sample Data")
+        # Sample data button with icon and modern styling
+        sample_btn = QPushButton(" Load Sample Data")
+        sample_btn.setIcon(QIcon.fromTheme("document-new"))
+        sample_btn.setCursor(Qt.PointingHandCursor)
+        sample_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #F57C00;
+            }
+            QPushButton:pressed {
+                background-color: #EF6C00;
+            }
+        """
+        )
         sample_btn.clicked.connect(self._load_sample_data)
         button_layout.addWidget(sample_btn)
 
-        # Convert button
-        convert_btn = QPushButton("Convert to Bullet List")
-        convert_btn.clicked.connect(self._convert)
+        # Convert button with icon and modern styling
+        convert_btn = QPushButton(" Convert to Bullet List")
+        convert_btn.setIcon(QIcon.fromTheme("view-list-bullet"))
+        convert_btn.setCursor(Qt.PointingHandCursor)
         convert_btn.setStyleSheet(
-            "background-color: #4CAF50; color: white; font-weight: bold;"
+            """
+            QPushButton {
+                background-color: #673AB7;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #5E35B1;
+            }
+            QPushButton:pressed {
+                background-color: #512DA8;
+            }
+        """
         )
+        convert_btn.clicked.connect(self._convert)
         button_layout.addWidget(convert_btn)
 
         input_layout.addWidget(input_label)
         input_layout.addWidget(self.input_text)
-        input_layout.addLayout(button_layout)
+        input_layout.addWidget(button_frame)
 
-        # Output section
-        output_widget = QWidget()
+        # Output section with card-like styling - theme-aware
+        output_widget = QFrame()
+        output_widget.setObjectName("outputFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+
+        # Add shadow to output frame
+        output_shadow = QGraphicsDropShadowEffect()
+        output_shadow.setBlurRadius(15)
+        output_shadow.setXOffset(0)
+        output_shadow.setYOffset(2)
+        output_shadow.setColor(QColor(0, 0, 0, 30))
+        output_widget.setGraphicsEffect(output_shadow)
+
         output_layout = QVBoxLayout(output_widget)
+        output_layout.setContentsMargins(15, 15, 15, 15)
+        output_layout.setSpacing(10)
 
-        # Clickable list section
+        # Clickable list section with better styling
         clickable_label = QLabel("Clickable Links (double-click to open):")
-        clickable_label.setFont(QFont("Arial", 12))
+        clickable_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        clickable_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
 
-        # Use QListWidget for clickable items
+        # Use QListWidget for clickable items with better styling - theme-aware
         self.link_list = QListWidget()
-        self.link_list.setFont(QFont("Arial", 10))
+        self.link_list.setFont(QFont("Arial", 11))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
+        self.link_list.setCursor(Qt.PointingHandCursor)
         self.link_list.itemDoubleClicked.connect(self._open_url)
 
-        # Markdown output section (combined with copy button)
-        markdown_section = QWidget()
+        # Markdown output section with better styling - theme-aware
+        markdown_section = QFrame()
+        markdown_section.setObjectName("markdownSection")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
         markdown_layout = QHBoxLayout(markdown_section)
+        markdown_layout.setContentsMargins(10, 10, 10, 10)
+        markdown_layout.setSpacing(10)
 
-        # Main markdown content area
-        markdown_container = QWidget()
+        # Main markdown content area with better styling - theme-aware
+        markdown_container = QFrame()
+        markdown_container.setObjectName("markdownContainer")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
         markdown_content_layout = QVBoxLayout(markdown_container)
+        markdown_content_layout.setContentsMargins(10, 10, 10, 10)
+        markdown_content_layout.setSpacing(8)
 
         markdown_label = QLabel("Markdown Output:")
-        markdown_label.setFont(QFont("Arial", 12))
+        markdown_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        markdown_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
+
         self.output_text = PlainTextEdit()
         self.output_text.setReadOnly(True)
+        self.output_text.setFont(QFont("Courier New", 12))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
 
         markdown_content_layout.addWidget(markdown_label)
         markdown_content_layout.addWidget(self.output_text)
 
-        # Markdown button area
-        markdown_button_container = QWidget()
+        # Markdown button area with better styling
+        markdown_button_container = QFrame()
+        markdown_button_container.setObjectName("markdownButtonContainer")
         markdown_button_layout = QVBoxLayout(markdown_button_container)
+        markdown_button_layout.setContentsMargins(5, 5, 5, 5)
+        markdown_button_layout.setSpacing(10)
         markdown_button_layout.addStretch()
 
-        # Copy markdown button
-        copy_md_btn = QPushButton("Copy\nMarkdown")
+        # Copy markdown button with icon and modern styling
+        copy_md_btn = QPushButton(" Copy\nMarkdown")
+        copy_md_btn.setIcon(QIcon.fromTheme("edit-copy"))
+        copy_md_btn.setCursor(Qt.PointingHandCursor)
+        copy_md_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border-radius: 4px;
+                padding: 8px;
+                font-weight: bold;
+                text-align: center;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+        """
+        )
         copy_md_btn.clicked.connect(self._copy_markdown)
         copy_md_btn.setMinimumHeight(50)
 
-        # Save markdown button
-        save_md_btn = QPushButton("Save\nMarkdown")
+        # Save markdown button with icon and modern styling
+        save_md_btn = QPushButton(" Save\nMarkdown")
+        save_md_btn.setIcon(QIcon.fromTheme("document-save"))
+        save_md_btn.setCursor(Qt.PointingHandCursor)
+        save_md_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border-radius: 4px;
+                padding: 8px;
+                font-weight: bold;
+                text-align: center;
+            }
+            QPushButton:hover {
+                background-color: #00897B;
+            }
+            QPushButton:pressed {
+                background-color: #00796B;
+            }
+        """
+        )
         save_md_btn.clicked.connect(self._save_markdown)
         save_md_btn.setMinimumHeight(50)
 

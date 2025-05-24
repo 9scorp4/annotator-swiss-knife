@@ -13,12 +13,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QFont, QTextCursor, QTextDocument
+from PyQt5.QtGui import QColor, QFont, QIcon, QTextCursor, QTextDocument
 from PyQt5.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
     QFileDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -98,78 +100,215 @@ class JsonVisualizerWidget(QWidget):
         """
         Initialize the user interface.
         """
-        # Main layout
+        # Main layout with better spacing and margins
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(12)
 
-        # Top controls
-        controls_layout = QHBoxLayout()
+        # Top controls in a styled frame - theme-aware
+        controls_frame = QFrame()
+        controls_frame.setObjectName("controlsFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
 
-        # Load button
-        self.load_button = QPushButton("Load from File")
+        # Add shadow to controls frame
+        controls_shadow = QGraphicsDropShadowEffect()
+        controls_shadow.setBlurRadius(15)
+        controls_shadow.setXOffset(0)
+        controls_shadow.setYOffset(2)
+        controls_shadow.setColor(QColor(0, 0, 0, 30))
+        controls_frame.setGraphicsEffect(controls_shadow)
+
+        controls_layout = QHBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(10, 8, 10, 8)
+        controls_layout.setSpacing(10)
+
+        # File operations group
+        file_ops_layout = QHBoxLayout()
+        file_ops_layout.setSpacing(8)
+
+        # Load button with icon and modern styling
+        self.load_button = QPushButton(" Load from File")
+        self.load_button.setIcon(
+            QIcon.fromTheme("document-open", QIcon.fromTheme("folder-open"))
+        )
+        self.load_button.setCursor(Qt.PointingHandCursor)
+        self.load_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """
+        )
         self.load_button.clicked.connect(self._load_conversation)
-        controls_layout.addWidget(self.load_button)
+        file_ops_layout.addWidget(self.load_button)
 
-        # Save button
-        self.save_button = QPushButton("Save Conversation")
+        # Save button with icon and modern styling
+        self.save_button = QPushButton(" Save Conversation")
+        self.save_button.setIcon(QIcon.fromTheme("document-save"))
+        self.save_button.setCursor(Qt.PointingHandCursor)
+        self.save_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #0b7dda;
+            }
+            QPushButton:pressed {
+                background-color: #0a6fc2;
+            }
+        """
+        )
         self.save_button.clicked.connect(self._save_conversation)
-        controls_layout.addWidget(self.save_button)
+        file_ops_layout.addWidget(self.save_button)
 
-        # Format selector
+        controls_layout.addLayout(file_ops_layout)
+
+        # Add a separator - theme-aware
+        separator = QFrame()
+        separator.setFrameShape(QFrame.VLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        separator.setObjectName("separator")  # Let app-wide theme handle color
+        controls_layout.addWidget(separator)
+
+        # Format selector with better styling - theme-aware
         format_label = QLabel("Format:")
+        format_label.setFont(QFont("Arial", 11, QFont.Bold))
+        format_label.setObjectName("fieldLabel")  # Let app-wide theme handle color
         controls_layout.addWidget(format_label)
 
         self.format_selector = QComboBox()
         self.format_selector.addItems(["Text", "Markdown"])
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.format_selector.currentTextChanged.connect(self._format_changed)
         controls_layout.addWidget(self.format_selector)
 
-        # Debug logging checkbox
+        # Debug logging checkbox - theme-aware
         self.debug_checkbox = QCheckBox("Debug Logging")
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.debug_checkbox.setChecked(
             config.get("tools", "json_fixer", "debug_logging", default=False)
         )
         self.debug_checkbox.stateChanged.connect(self._toggle_debug_logging)
         controls_layout.addWidget(self.debug_checkbox)
 
-        # Search controls
+        # Search controls with better styling
         controls_layout.addStretch(1)
+
+        search_frame = QFrame()
+        search_frame.setObjectName("searchFrame")  # Let app-wide theme handle styling
+        search_inner_layout = QHBoxLayout(search_frame)
+        search_inner_layout.setContentsMargins(8, 2, 8, 2)
+        search_inner_layout.setSpacing(5)
+
         search_label = QLabel("Search:")
-        controls_layout.addWidget(search_label)
+        search_label.setFont(QFont("Arial", 11, QFont.Bold))
+        search_label.setObjectName("fieldLabel")  # Let app-wide theme handle color
+        search_inner_layout.addWidget(search_label)
 
         self.search_input = PlainLineEdit()
+        self.search_input.setObjectName(
+            "searchInput"
+        )  # Let app-wide theme handle styling
         self.search_input.returnPressed.connect(self._search_text)
-        controls_layout.addWidget(self.search_input)
+        search_inner_layout.addWidget(self.search_input)
 
         search_button = QPushButton("Search")
+        search_button.setCursor(Qt.PointingHandCursor)
+        search_button.setObjectName("searchButton")  # Let app-wide theme handle styling
         search_button.clicked.connect(self._search_text)
-        controls_layout.addWidget(search_button)
+        search_inner_layout.addWidget(search_button)
+
+        controls_layout.addWidget(search_frame)
 
         self.case_sensitive = QCheckBox("Case Sensitive")
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         controls_layout.addWidget(self.case_sensitive)
 
-        main_layout.addLayout(controls_layout)
+        main_layout.addWidget(controls_frame)
 
-        # Create a splitter for the JSON input and conversation display
+        # Create a splitter for the JSON input and conversation display with better styling
         splitter = QSplitter(Qt.Vertical)
+        splitter.setHandleWidth(8)
+        splitter.setStyleSheet(
+            """
+            QSplitter::handle {
+                background-color: #e0e0e0;
+                border-radius: 4px;
+            }
+            QSplitter::handle:hover {
+                background-color: #2196F3;
+            }
+        """
+        )
 
-        # JSON input section
-        json_widget = QWidget()
+        # JSON input section with card-like styling - theme-aware
+        json_widget = QFrame()
+        json_widget.setObjectName("jsonInputFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+
+        # Add shadow to JSON input frame
+        json_shadow = QGraphicsDropShadowEffect()
+        json_shadow.setBlurRadius(15)
+        json_shadow.setXOffset(0)
+        json_shadow.setYOffset(2)
+        json_shadow.setColor(QColor(0, 0, 0, 30))
+        json_widget.setGraphicsEffect(json_shadow)
+
         json_layout = QVBoxLayout(json_widget)
+        json_layout.setContentsMargins(15, 15, 15, 15)
+        json_layout.setSpacing(10)
 
         json_header = QHBoxLayout()
         json_label = QLabel("Paste JSON Data:")
+        json_label.setFont(QFont("Poppins", 14, QFont.Bold))
+        json_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
         json_header.addWidget(json_label)
 
-        # Generate button
-        self.generate_button = QPushButton("Generate Visualization")
+        # Generate button with modern styling
+        self.generate_button = QPushButton(" Generate Visualization")
+        self.generate_button.setIcon(QIcon.fromTheme("view-refresh"))
+        self.generate_button.setCursor(Qt.PointingHandCursor)
+        self.generate_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #673AB7;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #5E35B1;
+            }
+            QPushButton:pressed {
+                background-color: #512DA8;
+            }
+        """
+        )
         self.generate_button.clicked.connect(self._generate_from_input)
         json_header.addWidget(self.generate_button)
 
         json_layout.addLayout(json_header)
 
-        # JSON input text area
+        # JSON input text area with better styling - theme-aware
         self.json_input = PlainTextEdit()
-        self.json_input.setFont(QFont("Courier New", 10))
+        self.json_input.setFont(QFont("Courier New", 11))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.json_input.setPlaceholderText(
             """Paste your JSON data here.
 For conversations, use format:
@@ -195,21 +334,56 @@ OR any valid JSON data:
 
         splitter.addWidget(json_widget)
 
-        # Conversation display widget
-        display_widget = QWidget()
+        # Conversation display widget with card-like styling - theme-aware
+        display_widget = QFrame()
+        display_widget.setObjectName("displayFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+
+        # Add shadow to display frame
+        display_shadow = QGraphicsDropShadowEffect()
+        display_shadow.setBlurRadius(15)
+        display_shadow.setXOffset(0)
+        display_shadow.setYOffset(2)
+        display_shadow.setColor(QColor(0, 0, 0, 30))
+        display_widget.setGraphicsEffect(display_shadow)
+
         display_layout = QVBoxLayout(display_widget)
+        display_layout.setContentsMargins(15, 15, 15, 15)
+        display_layout.setSpacing(10)
 
         display_label = QLabel("JSON Display:")
+        display_label.setFont(QFont("Poppins", 14, QFont.Bold))
+        display_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
         display_layout.addWidget(display_label)
 
-        # Text display area
+        # Text display area with better styling - theme-aware
         self.text_display = PlainTextEdit()
         self.text_display.setReadOnly(True)
-        self.text_display.setFont(QFont("Arial", 11))
+        self.text_display.setFont(QFont("Arial", 12))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         display_layout.addWidget(self.text_display)
 
-        # Add copy button for display
-        copy_button = QPushButton("Copy Formatted JSON")
+        # Add copy button for display with modern styling
+        copy_button = QPushButton(" Copy Formatted JSON")
+        copy_button.setIcon(QIcon.fromTheme("edit-copy"))
+        copy_button.setCursor(Qt.PointingHandCursor)
+        copy_button.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border-radius: 4px;
+                padding: 8px 15px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #F57C00;
+            }
+            QPushButton:pressed {
+                background-color: #EF6C00;
+            }
+        """
+        )
         copy_button.clicked.connect(self._copy_conversation)
         display_layout.addWidget(copy_button)
 
@@ -220,9 +394,20 @@ OR any valid JSON data:
 
         main_layout.addWidget(splitter)
 
-        # Status bar
+        # Status bar with modern styling - theme-aware
+        status_frame = QFrame()
+        status_frame.setObjectName("statusFrame")
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
+        status_layout = QHBoxLayout(status_frame)
+        status_layout.setContentsMargins(10, 5, 10, 5)
+
         self.status_label = QLabel("Ready")
-        main_layout.addWidget(self.status_label)
+        self.status_label.setObjectName(
+            "statusLabel"
+        )  # Let app-wide theme handle color
+        status_layout.addWidget(self.status_label)
+
+        main_layout.addWidget(status_frame)
 
     def _format_changed(self, format_text: str) -> None:
         """

@@ -9,11 +9,13 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QColor, QFont, QIcon
 from PyQt5.QtWidgets import (
     QApplication,
     QButtonGroup,
     QFileDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -55,85 +57,261 @@ class TextCleanerWidget(QWidget):
         """
         Initialize the user interface.
         """
-        # Main layout
+        # Main layout with better spacing and margins
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(12)
 
-        # Create a splitter for input and output panes
+        # Create a splitter for input and output panes with better styling
         splitter = QSplitter(Qt.Horizontal)
-
-        # Input section
-        input_widget = QWidget()
-        input_layout = QVBoxLayout(input_widget)
-
-        input_label = QLabel("Input Text (with markdown/JSON/code artifacts):")
-        input_label.setFont(QFont("Arial", 12))
-        self.input_text = PlainTextEdit()
-        self.input_text.setPlaceholderText(
-            "Enter text here. You can use markdown, JSON, and code artifacts.\\n\\nExample:\\n\\n`This is a sample text\\n\\nwith artifacts.\\n*This text is in bold.*\\n\\nThis is a newline:\\n\\nThis is a code block:\\n```\\nimport pandas as pd\\nimport numpy as np```"
+        splitter.setHandleWidth(8)
+        splitter.setStyleSheet(
+            """
+            QSplitter::handle {
+                background-color: #e0e0e0;
+                border-radius: 4px;
+            }
+            QSplitter::handle:hover {
+                background-color: #2196F3;
+            }
+        """
         )
 
-        # Button container
-        button_layout = QHBoxLayout()
+        # Input section with card-like styling - theme-aware
+        input_widget = QFrame()
+        input_widget.setObjectName("inputFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
 
-        # Load button
-        load_btn = QPushButton("Load From File")
+        # Add shadow to input frame
+        input_shadow = QGraphicsDropShadowEffect()
+        input_shadow.setBlurRadius(15)
+        input_shadow.setXOffset(0)
+        input_shadow.setYOffset(2)
+        input_shadow.setColor(QColor(0, 0, 0, 30))
+        input_widget.setGraphicsEffect(input_shadow)
+
+        input_layout = QVBoxLayout(input_widget)
+        input_layout.setContentsMargins(15, 15, 15, 15)
+        input_layout.setSpacing(10)
+
+        input_label = QLabel("Input Text (with markdown/JSON/code artifacts):")
+        input_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        input_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
+
+        self.input_text = PlainTextEdit()
+        self.input_text.setFont(QFont("Courier New", 12))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
+        self.input_text.setPlaceholderText(
+            "Enter text here. You can use markdown, JSON, and code artifacts.\n\nExample:\n\n`This is a sample text\n\nwith artifacts.\n*This text is in bold.*\n\nThis is a newline:\n\nThis is a code block:\n```\nimport pandas as pd\nimport numpy as np```"
+        )
+
+        # Button container with better styling - theme-aware
+        button_frame = QFrame()
+        button_frame.setObjectName("buttonFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+        button_layout = QHBoxLayout(button_frame)
+        button_layout.setContentsMargins(10, 8, 10, 8)
+        button_layout.setSpacing(10)
+
+        # Load button with icon and modern styling
+        load_btn = QPushButton(" Load From File")
+        load_btn.setIcon(
+            QIcon.fromTheme("document-open", QIcon.fromTheme("folder-open"))
+        )
+        load_btn.setCursor(Qt.PointingHandCursor)
+        load_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """
+        )
         load_btn.clicked.connect(self._load_from_file)
         button_layout.addWidget(load_btn)
 
-        # Sample data button
-        sample_btn = QPushButton("Load Sample Data")
+        # Sample data button with icon and modern styling
+        sample_btn = QPushButton(" Load Sample Data")
+        sample_btn.setIcon(QIcon.fromTheme("document-new"))
+        sample_btn.setCursor(Qt.PointingHandCursor)
+        sample_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #F57C00;
+            }
+            QPushButton:pressed {
+                background-color: #EF6C00;
+            }
+        """
+        )
         sample_btn.clicked.connect(self._load_sample_data)
         button_layout.addWidget(sample_btn)
 
-        # Clean button
-        clean_btn = QPushButton("Clean Text")
-        clean_btn.clicked.connect(self._clean_text)
+        # Clean button with icon and modern styling
+        clean_btn = QPushButton(" Clean Text")
+        clean_btn.setIcon(QIcon.fromTheme("edit-clear"))
+        clean_btn.setCursor(Qt.PointingHandCursor)
         clean_btn.setStyleSheet(
-            "background-color: #4CAF50; color: white; font-weight: bold;"
+            """
+            QPushButton {
+                background-color: #673AB7;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #5E35B1;
+            }
+            QPushButton:pressed {
+                background-color: #512DA8;
+            }
+        """
         )
+        clean_btn.clicked.connect(self._clean_text)
         button_layout.addWidget(clean_btn)
 
         input_layout.addWidget(input_label)
         input_layout.addWidget(self.input_text)
-        input_layout.addLayout(button_layout)
+        input_layout.addWidget(button_frame)
 
-        # Output section
-        output_widget = QWidget()
+        # Output section with card-like styling - theme-aware
+        output_widget = QFrame()
+        output_widget.setObjectName("outputFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+
+        # Add shadow to output frame
+        output_shadow = QGraphicsDropShadowEffect()
+        output_shadow.setBlurRadius(15)
+        output_shadow.setXOffset(0)
+        output_shadow.setYOffset(2)
+        output_shadow.setColor(QColor(0, 0, 0, 30))
+        output_widget.setGraphicsEffect(output_shadow)
+
         output_layout = QVBoxLayout(output_widget)
+        output_layout.setContentsMargins(15, 15, 15, 15)
+        output_layout.setSpacing(10)
 
-        # Cleaned text section
+        # Cleaned text section with better styling
         cleaned_label = QLabel("Cleaned Text (editable):")
-        cleaned_label.setFont(QFont("Arial", 12))
+        cleaned_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        cleaned_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
+
         self.cleaned_text_edit = PlainTextEdit()
+        self.cleaned_text_edit.setFont(QFont("Arial", 12))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.cleaned_text_edit.setPlaceholderText(
             "Cleaned text will appear here. You can edit it before transforming back."
         )
 
-        # Generate output button
-        generate_btn = QPushButton("Generate Output (Code Format)")
-        generate_btn.clicked.connect(self._transform_back)
+        # Generate output button with icon and modern styling
+        generate_btn = QPushButton(" Generate Output (Code Format)")
+        generate_btn.setIcon(QIcon.fromTheme("document-export"))
+        generate_btn.setCursor(Qt.PointingHandCursor)
         generate_btn.setStyleSheet(
-            "background-color: #2196F3; color: white; font-weight: bold; font-size: 14px; padding: 8px;"
+            """
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border-radius: 6px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0D47A1;
+            }
+        """
         )
-        generate_btn.setMinimumHeight(40)
+        generate_btn.setMinimumHeight(45)
+        generate_btn.clicked.connect(self._transform_back)
 
-        # Transformed output section
+        # Transformed output section with better styling
         transformed_label = QLabel("Transformed Output:")
-        transformed_label.setFont(QFont("Arial", 12))
+        transformed_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        transformed_label.setObjectName(
+            "sectionTitle"
+        )  # Let app-wide theme handle color
+
         self.transformed_text = PlainTextEdit()
         self.transformed_text.setReadOnly(True)
+        self.transformed_text.setFont(QFont("Courier New", 12))
+        # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.transformed_text.setPlaceholderText("Transformed text will appear here")
 
-        # Button container for transformed text
-        transformed_button_layout = QHBoxLayout()
+        # Button container for transformed text with better styling - theme-aware
+        transformed_button_frame = QFrame()
+        transformed_button_frame.setObjectName("transformedButtonFrame")
+        # We'll let the app-wide theme handle the background color for better dark mode compatibility
+        transformed_button_layout = QHBoxLayout(transformed_button_frame)
+        transformed_button_layout.setContentsMargins(10, 8, 10, 8)
+        transformed_button_layout.setSpacing(10)
 
-        # Copy button
-        copy_btn = QPushButton("Copy Transformed Text")
+        # Copy button with icon and modern styling
+        copy_btn = QPushButton(" Copy Transformed Text")
+        copy_btn.setIcon(QIcon.fromTheme("edit-copy"))
+        copy_btn.setCursor(Qt.PointingHandCursor)
+        copy_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #607D8B;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #546E7A;
+            }
+            QPushButton:pressed {
+                background-color: #455A64;
+            }
+        """
+        )
         copy_btn.clicked.connect(self._copy_transformed)
         transformed_button_layout.addWidget(copy_btn)
 
-        # Save button
-        save_btn = QPushButton("Save Transformed Text")
+        # Save button with icon and modern styling
+        save_btn = QPushButton(" Save Transformed Text")
+        save_btn.setIcon(QIcon.fromTheme("document-save"))
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setStyleSheet(
+            """
+            QPushButton {
+                background-color: #009688;
+                color: white;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #00897B;
+            }
+            QPushButton:pressed {
+                background-color: #00796B;
+            }
+        """
+        )
         save_btn.clicked.connect(self._save_transformed)
         transformed_button_layout.addWidget(save_btn)
 
@@ -143,7 +321,7 @@ class TextCleanerWidget(QWidget):
         output_layout.addWidget(generate_btn)
         output_layout.addWidget(transformed_label)
         output_layout.addWidget(self.transformed_text, 40)  # 40% of height
-        output_layout.addLayout(transformed_button_layout)
+        output_layout.addWidget(transformed_button_frame)
 
         # Add widgets to splitter
         splitter.addWidget(input_widget)
