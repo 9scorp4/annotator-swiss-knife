@@ -90,6 +90,12 @@ class JsonVisualizerWidget(QWidget):
         self.tool = tool
         self.conversation = []
 
+        # Search state tracking
+        self.search_matches = []  # List of match indices
+        self.current_match_index = -1  # Current match being displayed
+        self.last_search_text = ""  # Last searched text
+        self.last_case_sensitive = False  # Last case sensitivity setting
+
         # Initialize file storage
         data_dir = Path.home() / "annotation_toolkit_data"
         self.storage = ConversationStorage(data_dir)
@@ -225,6 +231,27 @@ class JsonVisualizerWidget(QWidget):
             "searchInput"
         )  # Let app-wide theme handle styling
         self.search_input.returnPressed.connect(self._search_text)
+        self.search_input.textChanged.connect(self._on_search_text_changed)
+        
+        # Add keyboard shortcuts for search navigation
+        from PyQt5.QtWidgets import QShortcut
+        from PyQt5.QtGui import QKeySequence
+        
+        # F3 for next match
+        next_shortcut = QShortcut(QKeySequence("F3"), self)
+        next_shortcut.activated.connect(self._next_match)
+        
+        # Shift+F3 for previous match
+        prev_shortcut = QShortcut(QKeySequence("Shift+F3"), self)
+        prev_shortcut.activated.connect(self._previous_match)
+        
+        # Ctrl+F to focus search input
+        search_shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        search_shortcut.activated.connect(self._focus_search)
+        
+        # Escape to clear search
+        escape_shortcut = QShortcut(QKeySequence("Escape"), self)
+        escape_shortcut.activated.connect(self._clear_search)
         search_inner_layout.addWidget(self.search_input)
 
         search_button = QPushButton("Search")
@@ -233,9 +260,33 @@ class JsonVisualizerWidget(QWidget):
         search_button.clicked.connect(self._search_text)
         search_inner_layout.addWidget(search_button)
 
+        # Navigation buttons for multiple matches
+        self.prev_button = QPushButton("◀")
+        self.prev_button.setToolTip("Previous match")
+        self.prev_button.setCursor(Qt.PointingHandCursor)
+        self.prev_button.setEnabled(False)
+        self.prev_button.setFixedSize(30, 30)
+        self.prev_button.clicked.connect(self._previous_match)
+        search_inner_layout.addWidget(self.prev_button)
+
+        self.next_button = QPushButton("▶")
+        self.next_button.setToolTip("Next match")
+        self.next_button.setCursor(Qt.PointingHandCursor)
+        self.next_button.setEnabled(False)
+        self.next_button.setFixedSize(30, 30)
+        self.next_button.clicked.connect(self._next_match)
+        search_inner_layout.addWidget(self.next_button)
+
+        # Match counter label
+        self.match_counter_label = QLabel("")
+        self.match_counter_label.setFont(QFont("Arial", 10))
+        self.match_counter_label.setObjectName("matchCounter")
+        search_inner_layout.addWidget(self.match_counter_label)
+
         controls_layout.addWidget(search_frame)
 
         self.case_sensitive = QCheckBox("Case Sensitive")
+        self.case_sensitive.stateChanged.connect(self._on_case_sensitive_changed)
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
         controls_layout.addWidget(self.case_sensitive)
 
@@ -667,58 +718,179 @@ OR any valid JSON data:
 
     def _search_text(self) -> None:
         """
-        Search for text in the conversation.
+        Search for text in the conversation and initialize navigation.
         """
         search_text = self.search_input.text().strip()
         if not search_text:
+            self._clear_search()
             return
 
         if not self.conversation:
             QMessageBox.information(self, "No Data", "There is no JSON data to search.")
             return
 
-        # Search the data
-        case_sensitive = self.case_sensitive.isChecked()
+        # Perform the search
+        self._perform_search(search_text, self.case_sensitive.isChecked())
 
-        # If it's a conversation, use the search_conversation method
-        if isinstance(self.conversation, list) and all(
-            isinstance(msg, dict) for msg in self.conversation
-        ):
-            matches = self.tool.search_conversation(
-                self.conversation, search_text, case_sensitive
-            )
-        else:
-            # For generic JSON, just search in the displayed text
-            matches = (
-                [0]
-                if search_text.lower() in self.text_display.toPlainText().lower()
-                else []
-            )
-
-        # Update status with match count
-        self.status_label.setText(f"Found {len(matches)} matches for '{search_text}'")
-
-        # If no matches, show a message and return
-        if not matches:
+    def _perform_search(self, search_text: str, case_sensitive: bool) -> None:
+        """
+        Perform the actual search and update the UI.
+        
+        Args:
+            search_text: The text to search for
+            case_sensitive: Whether the search should be case-sensitive
+        """
+        # Store search parameters
+        self.last_search_text = search_text
+        self.last_case_sensitive = case_sensitive
+        
+        # Find all matches in the displayed text
+        self.search_matches = self._find_all_matches(search_text, case_sensitive)
+        
+        if not self.search_matches:
+            # No matches found
+            self.current_match_index = -1
+            self._update_search_ui()
+            self.status_label.setText(f"No matches found for '{search_text}'")
             QMessageBox.information(
                 self, "No Matches", f"No matches found for '{search_text}'"
             )
             return
+        
+        # Start with the first match
+        self.current_match_index = 0
+        self._update_search_ui()
+        self._highlight_current_match()
+        
+        # Update status
+        self.status_label.setText(f"Found {len(self.search_matches)} matches for '{search_text}'")
 
-        # Otherwise, search and highlight in the display
-        document = self.text_display.document()
+    def _find_all_matches(self, search_text: str, case_sensitive: bool) -> List[int]:
+        """
+        Find all matches of the search text in the displayed content.
+        
+        Args:
+            search_text: The text to search for
+            case_sensitive: Whether the search should be case-sensitive
+            
+        Returns:
+            List of character positions where matches were found
+        """
+        matches = []
+        text_content = self.text_display.toPlainText()
+        
+        if not case_sensitive:
+            search_text = search_text.lower()
+            text_content = text_content.lower()
+        
+        start = 0
+        while True:
+            pos = text_content.find(search_text, start)
+            if pos == -1:
+                break
+            matches.append(pos)
+            start = pos + 1
+        
+        return matches
+
+    def _highlight_current_match(self) -> None:
+        """
+        Highlight the current match in the text display.
+        """
+        if self.current_match_index < 0 or self.current_match_index >= len(self.search_matches):
+            return
+        
+        # Get the position of the current match
+        match_pos = self.search_matches[self.current_match_index]
+        
+        # Create a cursor and move it to the match position
         cursor = self.text_display.textCursor()
-        cursor.movePosition(QTextCursor.Start)
+        cursor.setPosition(match_pos)
+        cursor.setPosition(match_pos + len(self.last_search_text), QTextCursor.KeepAnchor)
+        
+        # Set the cursor to select the match
+        self.text_display.setTextCursor(cursor)
+        
+        # Ensure the match is visible
+        self.text_display.ensureCursorVisible()
+
+    def _update_search_ui(self) -> None:
+        """
+        Update the search UI elements based on current search state.
+        """
+        has_matches = len(self.search_matches) > 0
+        has_multiple_matches = len(self.search_matches) > 1
+        
+        # Enable/disable navigation buttons
+        self.prev_button.setEnabled(has_multiple_matches)
+        self.next_button.setEnabled(has_multiple_matches)
+        
+        # Update match counter
+        if has_matches:
+            current_display = self.current_match_index + 1
+            total_matches = len(self.search_matches)
+            self.match_counter_label.setText(f"{current_display}/{total_matches}")
+        else:
+            self.match_counter_label.setText("")
+
+    def _previous_match(self) -> None:
+        """
+        Navigate to the previous search match.
+        """
+        if not self.search_matches:
+            return
+        
+        self.current_match_index = (self.current_match_index - 1) % len(self.search_matches)
+        self._update_search_ui()
+        self._highlight_current_match()
+
+    def _next_match(self) -> None:
+        """
+        Navigate to the next search match.
+        """
+        if not self.search_matches:
+            return
+        
+        self.current_match_index = (self.current_match_index + 1) % len(self.search_matches)
+        self._update_search_ui()
+        self._highlight_current_match()
+
+    def _on_search_text_changed(self) -> None:
+        """
+        Handle search text changes - clear search if text is empty.
+        """
+        if not self.search_input.text().strip():
+            self._clear_search()
+
+    def _on_case_sensitive_changed(self) -> None:
+        """
+        Handle case sensitivity changes - re-search if we have search text.
+        """
+        search_text = self.search_input.text().strip()
+        if search_text:
+            self._perform_search(search_text, self.case_sensitive.isChecked())
+
+    def _clear_search(self) -> None:
+        """
+        Clear the current search state.
+        """
+        self.search_matches = []
+        self.current_match_index = -1
+        self.last_search_text = ""
+        self.last_case_sensitive = False
+        self._update_search_ui()
+        
+        # Clear any text selection
+        cursor = self.text_display.textCursor()
+        cursor.clearSelection()
         self.text_display.setTextCursor(cursor)
 
-        # Use built-in search functionality
-        # For case sensitivity
-        if case_sensitive:
-            # Use integer value 2 which corresponds to FindCaseSensitively in PyQt5
-            self.text_display.find(search_text, 2)
-        else:
-            # No flags for case insensitive search
-            self.text_display.find(search_text)
+    def _focus_search(self) -> None:
+        """
+        Focus the search input field and select all text.
+        """
+        self.search_input.setFocus()
+        self.search_input.selectAll()
 
     def _clean_json_input(self, text: str) -> str:
         """

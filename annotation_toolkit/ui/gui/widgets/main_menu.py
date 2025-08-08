@@ -1,5 +1,5 @@
 """
-Main menu widget for the annotation toolkit GUI.
+Main menu widget for the annotation swiss knife GUI.
 
 This module implements the main menu widget that displays buttons for each tool.
 """
@@ -24,12 +24,13 @@ from ....core.base import AnnotationTool
 
 class ToolButton(QPushButton):
     """
-    Custom button for tools with enhanced visual effects.
+    Custom button for tools with clean, simple design.
     """
 
     def __init__(
         self,
         text,
+        description="",
         icon_name=None,
         color="#4CAF50",
         hover_color="#45a049",
@@ -41,6 +42,7 @@ class ToolButton(QPushButton):
 
         Args:
             text (str): Button text
+            description (str): Button description
             icon_name (str, optional): Icon name
             color (str): Default button color for light theme
             hover_color (str): Button color on hover for light theme
@@ -48,12 +50,16 @@ class ToolButton(QPushButton):
             dark_hover_color (str, optional): Button color on hover for dark theme
         """
         super().__init__(text)
+        self.tool_name = text
+        self.tool_description = description
         self.default_color = color
         self.hover_color = hover_color
         self.dark_color = dark_color or color
         self.dark_hover_color = dark_hover_color or hover_color
-        self.setFont(QFont("Poppins", 12))
+
+        # Set reasonable fixed height
         self.setMinimumHeight(70)
+        self.setFont(QFont("Arial", 14, QFont.Bold))
         self.setCursor(Qt.PointingHandCursor)
 
         # We'll use the palette to determine if we're in dark mode
@@ -63,29 +69,32 @@ class ToolButton(QPushButton):
         button_color = self.dark_color if is_dark_mode else self.default_color
         button_hover_color = self.dark_hover_color if is_dark_mode else self.hover_color
 
-        # Set button style
+        # Set clean, simple button style
         self.setStyleSheet(
             f"""
             QPushButton {{
-                background-color: {button_color};
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 {button_color}, stop: 1 {self._darken_color(button_color, 0.1)});
                 color: white;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 15px 20px;
                 text-align: left;
-                padding-left: 20px;
                 border: none;
+                font-weight: bold;
+                font-size: 14px;
             }}
             QPushButton:hover {{
-                background-color: {button_hover_color};
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 {button_hover_color}, stop: 1 {self._darken_color(button_hover_color, 0.1)});
             }}
             QPushButton:pressed {{
-                background-color: {button_hover_color};
-                padding-top: 12px;
+                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                    stop: 0 {self._darken_color(button_color, 0.2)}, stop: 1 {self._darken_color(button_color, 0.3)});
             }}
             """
         )
 
-        # Add shadow effect
+        # Add simple shadow effect
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(15)
         shadow.setXOffset(0)
@@ -95,6 +104,39 @@ class ToolButton(QPushButton):
 
         # Set size policy
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+    def _darken_color(self, color_hex, factor):
+        """Darken a hex color by a given factor."""
+        try:
+            # Remove the # if present
+            color_hex = color_hex.lstrip("#")
+
+            # Convert to RGB
+            r = int(color_hex[0:2], 16)
+            g = int(color_hex[2:4], 16)
+            b = int(color_hex[4:6], 16)
+
+            # Darken by factor
+            r = max(0, int(r * (1 - factor)))
+            g = max(0, int(g * (1 - factor)))
+            b = max(0, int(b * (1 - factor)))
+
+            # Convert back to hex
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except:
+            return color_hex  # Return original if conversion fails
+
+    def enterEvent(self, event):
+        """Handle mouse enter event for smooth animations."""
+        super().enterEvent(event)
+        # Create a subtle animation effect
+        self.animation = QPropertyAnimation(self, b"geometry")
+        self.animation.setDuration(150)
+        self.animation.setEasingCurve(QEasingCurve.OutCubic)
+
+    def leaveEvent(self, event):
+        """Handle mouse leave event."""
+        super().leaveEvent(event)
 
 
 class MainMenuWidget(QWidget):
@@ -142,7 +184,7 @@ class MainMenuWidget(QWidget):
         header_layout.setSpacing(10)
 
         # Title with modern font - theme-aware
-        title_label = QLabel("Annotation Toolkit")
+        title_label = QLabel("Annotation Swiss Knife")
         title_label.setFont(QFont("Poppins", 28, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setObjectName("mainTitle")  # Let app-wide theme handle color
@@ -171,25 +213,42 @@ class MainMenuWidget(QWidget):
         tools_container.setGraphicsEffect(tools_shadow)
 
         tools_layout = QVBoxLayout(tools_container)
-        tools_layout.setContentsMargins(20, 20, 20, 20)
-        tools_layout.setSpacing(15)
+        tools_layout.setContentsMargins(20, 20, 20, 20)  # Reasonable margins
+        tools_layout.setSpacing(15)  # Moderate space between buttons
 
-        # Define colors for the tool buttons - more vibrant and modern
-        colors = {
-            "Dictionary to Bullet List": ("#4CAF50", "#3d9c40"),  # Green
-            "JSON Visualizer": ("#2196F3", "#1a7fd1"),  # Blue
-            "Text Cleaner": ("#FF9800", "#e68a00"),  # Orange
+        # Define colors and descriptions for the tool buttons - more vibrant and modern
+        tool_info = {
+            "Dictionary to Bullet List": {
+                "colors": ("#4CAF50", "#3d9c40"),  # Green
+                "description": "Convert JSON dictionaries to formatted bullet lists with clickable links",
+            },
+            "JSON Visualizer": {
+                "colors": ("#2196F3", "#1a7fd1"),  # Blue
+                "description": "Parse and visualize JSON data with conversation formatting and search",
+            },
+            "Text Cleaner": {
+                "colors": ("#FF9800", "#e68a00"),  # Orange
+                "description": "Clean text from markdown, JSON, and code artifacts for better readability",
+            },
         }
 
         # Add a button for each tool
         for tool_name, tool in self.tools.items():
-            default_color, hover_color = colors.get(
-                tool_name, ("#607D8B", "#546E7A")  # Default to gray if not found
+            info = tool_info.get(
+                tool_name,
+                {
+                    "colors": ("#607D8B", "#546E7A"),  # Default to gray if not found
+                    "description": tool.description,
+                },
             )
+
+            default_color, hover_color = info["colors"]
+            description = info["description"]
 
             # Create custom tool button with theme-aware styling but keep original colors
             button = ToolButton(
                 text=tool_name,
+                description=description,
                 color=default_color,
                 hover_color=hover_color,
                 dark_color=default_color,  # Keep original color in dark theme
@@ -197,7 +256,7 @@ class MainMenuWidget(QWidget):
             )
 
             # Add tool description as tooltip with better formatting
-            button.setToolTip(f"<b>{tool_name}</b><br>{tool.description}")
+            button.setToolTip(f"<b>{tool_name}</b><br>{description}")
 
             # Connect button to switch_to_tool function
             button.clicked.connect(
@@ -230,7 +289,7 @@ class MainMenuWidget(QWidget):
         footer_layout = QVBoxLayout(footer_container)
         footer_layout.setContentsMargins(10, 10, 10, 10)
 
-        footer_label = QLabel("© 2025 Nicolas Arias Garcia | Meta")
+        footer_label = QLabel("© 2025 Nicolas Arias Garcia | CATHARSIS💫")
         footer_label.setAlignment(Qt.AlignCenter)
         footer_label.setObjectName("footerLabel")  # Let app-wide theme handle color
         footer_label.setFont(QFont("Arial", 12))
