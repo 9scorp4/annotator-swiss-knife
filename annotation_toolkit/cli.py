@@ -1,7 +1,7 @@
 """
-Command-line interface for the annotation toolkit.
+Command-line interface for the annotation swiss knife.
 
-This module provides a command-line interface for the annotation toolkit.
+This module provides a command-line interface for the annotation swiss knife.
 """
 
 import argparse
@@ -19,6 +19,11 @@ from .ui.cli.commands import (
     run_text_cleaner_command,
 )
 from .utils import logger
+from .utils.error_handler import (
+    format_error_for_user,
+    handle_errors,
+    with_error_handling,
+)
 from .utils.errors import (
     AnnotationToolkitError,
     ConfigurationError,
@@ -26,12 +31,7 @@ from .utils.errors import (
     FileNotFoundError as ATFileNotFoundError,
     FileReadError,
     ParsingError,
-    ProcessingError
-)
-from .utils.error_handler import (
-    handle_errors,
-    format_error_for_user,
-    with_error_handling
+    ProcessingError,
 )
 
 
@@ -43,12 +43,12 @@ def create_parser() -> argparse.ArgumentParser:
         argparse.ArgumentParser: The argument parser.
     """
     parser = argparse.ArgumentParser(
-        description="Annotation Toolkit - A collection of tools for data annotation"
+        description="Annotation Swiss Knife - A comprehensive swiss knife for data annotation tasks"
     )
 
     # Add version argument
     parser.add_argument(
-        "--version", action="version", version="Annotation Toolkit v0.1.0"
+        "--version", action="version", version="Annotation Swiss Knife v0.1.0"
     )
 
     # Add config file argument
@@ -128,7 +128,7 @@ def create_parser() -> argparse.ArgumentParser:
 @with_error_handling(
     error_code=ErrorCode.PROCESSING_ERROR,
     error_message="Error executing command",
-    suggestion="Check the command arguments and ensure they are valid."
+    suggestion="Check the command arguments and ensure they are valid.",
 )
 def execute_command(parsed_args: argparse.Namespace, config: Config) -> int:
     """
@@ -171,7 +171,7 @@ def execute_command(parsed_args: argparse.Namespace, config: Config) -> int:
         raise ProcessingError(
             f"Unknown command: {parsed_args.command}",
             error_code=ErrorCode.INVALID_INPUT,
-            suggestion="Use one of the available commands: dict2bullet, jsonvis, textclean, or gui."
+            suggestion="Use one of the available commands: dict2bullet, jsonvis, textclean, or gui.",
         )
 
 
@@ -186,7 +186,7 @@ def main(args: Optional[Sequence[str]] = None) -> int:
     Returns:
         int: Exit code.
     """
-    logger.info("Starting Annotation Toolkit CLI")
+    logger.info("Starting Annotation Swiss Knife CLI")
     parser = create_parser()
     parsed_args = parser.parse_args(args)
 
@@ -232,7 +232,9 @@ def main(args: Optional[Sequence[str]] = None) -> int:
         print(f"Error: {error_message}", file=sys.stderr)
         return 1
     except Exception as e:
-        logger.exception(f"Unexpected error executing command {parsed_args.command}: {str(e)}")
+        logger.exception(
+            f"Unexpected error executing command {parsed_args.command}: {str(e)}"
+        )
         print(f"Unexpected error: {str(e)}", file=sys.stderr)
         return 1
 

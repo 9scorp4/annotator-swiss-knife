@@ -1,5 +1,5 @@
 """
-Setup script for the Annotation Toolkit package.
+Setup script for the Annotation Swiss Knife package.
 """
 
 from setuptools import find_packages, setup
@@ -9,10 +9,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="annotation-toolkit",
-    version="0.1.0",
+    version="0.2.0",
     author="Nicolas Arias Garcia",
     author_email="ariasgarnicolas@meta.com",
-    description="A toolkit for data annotation tasks",
+    description="A comprehensive data annotation swiss knife for various annotation tasks",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourusername/annotation-toolkit",
