@@ -7,7 +7,7 @@ annotation_toolkit.core.text.dict_to_bullet module.
 
 import json
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from annotation_toolkit.core.text.dict_to_bullet import DictToBulletList
 from annotation_toolkit.utils.errors import ToolExecutionError
@@ -22,7 +22,7 @@ class TestDictToBulletList(unittest.TestCase):
         self.test_dict = {
             "Item 1": "Value 1",
             "Item 2": "https://example.com",
-            "Item 3": "Value 3"
+            "Item 3": "Value 3",
         }
         self.test_json = json.dumps(self.test_dict)
 
@@ -63,10 +63,7 @@ class TestDictToBulletList(unittest.TestCase):
 
     def test_process_dict_non_string_values(self):
         """Test processing a dictionary with non-string values."""
-        invalid_dict = {
-            "Item 1": "Value 1",
-            "Item 2": 123  # Non-string value
-        }
+        invalid_dict = {"Item 1": "Value 1", "Item 2": 123}  # Non-string value
         with self.assertRaises(ToolExecutionError):
             self.tool.process_dict(invalid_dict)
 
@@ -78,8 +75,10 @@ class TestDictToBulletList(unittest.TestCase):
 
     def test_process_dict_to_items(self):
         """Test converting a dictionary to a list of (title, url) tuples."""
-        with patch('annotation_toolkit.utils.text.formatting.extract_url_title',
-                  return_value="Example Website"):
+        with patch(
+            "annotation_toolkit.core.text.dict_to_bullet.extract_url_title",
+            return_value="Example Website",
+        ):
             items = self.tool.process_dict_to_items(self.test_dict)
             self.assertEqual(len(items), 3)
 
@@ -94,10 +93,7 @@ class TestDictToBulletList(unittest.TestCase):
 
     def test_process_dict_to_items_non_string_values(self):
         """Test processing a dictionary with non-string values for items."""
-        invalid_dict = {
-            "Item 1": "Value 1",
-            "Item 2": 123  # Non-string value
-        }
+        invalid_dict = {"Item 1": "Value 1", "Item 2": 123}  # Non-string value
         with self.assertRaises(ToolExecutionError):
             self.tool.process_dict_to_items(invalid_dict)
 
