@@ -1,7 +1,7 @@
 #!/bin/bash
 # Run script for Data Annotation Swiss Knife
 
-set -e  # Exit on any error
+# Note: Removed set -e to allow debug output even if there are errors
 
 # Text formatting for better user experience
 RED='\033[0;31m'
@@ -13,6 +13,11 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." &> /dev/null && pwd )"
 VENV_DIR="$PROJECT_ROOT/venv"
+
+# Debug output for troubleshooting
+echo -e "${YELLOW}Debug: Script directory: $SCRIPT_DIR${NC}"
+echo -e "${YELLOW}Debug: Project root: $PROJECT_ROOT${NC}"
+echo -e "${YELLOW}Debug: Looking for venv at: $VENV_DIR${NC}"
 
 # Determine the activation script based on OS
 if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
