@@ -183,16 +183,16 @@ class MainMenuWidget(QWidget):
         header_layout.setContentsMargins(20, 20, 20, 20)
         header_layout.setSpacing(10)
 
-        # Title with modern font - theme-aware
+        # Title with modern font - theme-aware (using system font)
         title_label = QLabel("Annotation Swiss Knife")
-        title_label.setFont(QFont("Poppins", 28, QFont.Bold))
+        title_label.setFont(QFont("Arial", 28, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setObjectName("mainTitle")  # Let app-wide theme handle color
         header_layout.addWidget(title_label)
 
         # Description with subtle styling - theme-aware
         desc_label = QLabel("Select a tool to use:")
-        desc_label.setFont(QFont("Poppins", 14))
+        desc_label.setFont(QFont("Arial", 14))
         desc_label.setAlignment(Qt.AlignCenter)
         desc_label.setObjectName("mainDescription")  # Let app-wide theme handle color
         header_layout.addWidget(desc_label)

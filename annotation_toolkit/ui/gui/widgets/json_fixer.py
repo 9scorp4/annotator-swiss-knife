@@ -20,59 +20,50 @@ json_fixer_logger = logging.getLogger("annotation_toolkit.json_fixer")
 config = Config()
 debug_logging = config.get("tools", "json_fixer", "debug_logging", default=False)
 
-# Set the logging level based on the configuration
-if debug_logging:
-    json_fixer_logger.setLevel(logging.DEBUG)
-else:
-    json_fixer_logger.setLevel(logging.INFO)
-
-# Add a file handler to save detailed logs
-try:
-    # First try the project logs directory
-    project_logs_dir = Path(
-        "/Users/ariasgarnicolas/Documents/annotator_swiss_knife/logs"
-    )
-    if not project_logs_dir.exists():
-        project_logs_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Created project logs directory: {project_logs_dir}")
-
-    # Create a file handler for JSON fixing logs in the project directory
-    json_log_file = project_logs_dir / "json_fixer.log"
-    print(f"Setting up log file at: {json_log_file}")
-
-    file_handler = logging.FileHandler(json_log_file, mode="a")
-
-    # Set the logging level for the file handler
+# Only initialize logging if it hasn't been done already
+if not json_fixer_logger.handlers:
+    # Set the logging level based on the configuration
     if debug_logging:
-        file_handler.setLevel(logging.DEBUG)
+        json_fixer_logger.setLevel(logging.DEBUG)
     else:
-        file_handler.setLevel(logging.INFO)
+        json_fixer_logger.setLevel(logging.INFO)
 
-    # Create a formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    file_handler.setFormatter(formatter)
+    # Add a file handler to save detailed logs
+    try:
+        # First try the project logs directory
+        project_logs_dir = Path(
+            "/Users/ariasgarnicolas/Documents/annotator_swiss_knife/logs"
+        )
+        if not project_logs_dir.exists():
+            project_logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Add the handler to the logger
-    json_fixer_logger.addHandler(file_handler)
+        # Create a file handler for JSON fixing logs in the project directory
+        json_log_file = project_logs_dir / "json_fixer.log"
 
-    # Also add a console handler for immediate feedback
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    if debug_logging:
-        console_handler.setLevel(logging.DEBUG)
-    else:
+        file_handler = logging.FileHandler(json_log_file, mode="a")
+
+        # Set the logging level for the file handler
+        if debug_logging:
+            file_handler.setLevel(logging.DEBUG)
+        else:
+            file_handler.setLevel(logging.INFO)
+
+        # Create a formatter
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        file_handler.setFormatter(formatter)
+
+        # Add the handler to the logger
+        json_fixer_logger.addHandler(file_handler)
+
+        json_fixer_logger.info(f"JSON fixer logger initialized (debug={debug_logging})")
+    except Exception as e:
+        # Create a minimal logger that works
+        console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
-    json_fixer_logger.addHandler(console_handler)
-
-    json_fixer_logger.info(f"JSON fixer logger initialized (debug={debug_logging})")
-    print(f"JSON fixer logger initialized with log file: {json_log_file}")
-except Exception as e:
-    print(f"Failed to set up JSON fixer logger: {str(e)}")
-    import traceback
-
-    traceback.print_exc()
+        json_fixer_logger.addHandler(console_handler)
+        json_fixer_logger.warning(f"Failed to set up JSON fixer file logging: {str(e)}")
 
 
 class TokenType(Enum):
