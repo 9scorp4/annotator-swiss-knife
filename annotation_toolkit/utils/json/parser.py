@@ -10,6 +10,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union
 
+from ..errors import ParsingError
+
 # Configure a specific logger for JSON parsing
 logger = logging.getLogger("annotation_toolkit.json_parser")
 
@@ -448,3 +450,127 @@ def normalize_chat_message(msg: Dict) -> Dict[str, str]:
         return {"role": role, "content": content}
 
     raise ValueError("Could not normalize message")
+
+
+def is_valid_json(json_str: Union[str, None]) -> bool:
+    """
+    Check if a string is valid JSON.
+
+    Args:
+        json_str: The string to check. Can be None.
+
+    Returns:
+        True if the string is valid JSON, False otherwise.
+    """
+    if json_str is None or json_str == "":
+        return False
+
+    try:
+        json.loads(json_str)
+        return True
+    except (json.JSONDecodeError, TypeError):
+        return False
+
+
+def parse_json(json_str: Union[str, None]) -> Any:
+    """
+    Parse a JSON string and raise ParsingError on failure.
+
+    Args:
+        json_str: The JSON string to parse. Can be None.
+
+    Returns:
+        The parsed JSON data.
+
+    Raises:
+        ParsingError: If the JSON string cannot be parsed.
+    """
+    if json_str is None:
+        raise ParsingError(
+            "Cannot parse None as JSON", suggestion="Provide a valid JSON string"
+        )
+
+    if json_str == "":
+        raise ParsingError(
+            "Cannot parse empty string as JSON",
+            suggestion="Provide a non-empty JSON string",
+        )
+
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError as e:
+        raise ParsingError(
+            f"Invalid JSON format: {str(e)}",
+            details={
+                "input": json_str[:100] + "..." if len(json_str) > 100 else json_str
+            },
+            suggestion="Check the JSON syntax and ensure it's properly formatted",
+            cause=e,
+        )
+
+
+def extract_json_from_text(text: str) -> Any:
+    """
+    Extract the first JSON object found in text.
+
+    This function searches for JSON objects in the text and returns the first
+    valid JSON object it finds.
+
+    Args:
+        text: The text to search for JSON objects.
+
+    Returns:
+        The first valid JSON object found in the text.
+
+    Raises:
+        ParsingError: If no valid JSON object is found in the text.
+    """
+    if not text or not isinstance(text, str):
+        raise ParsingError(
+            "Cannot extract JSON from empty or invalid text",
+            suggestion="Provide a valid text string containing JSON",
+        )
+
+    # Try to find JSON objects in the text
+    # Look for patterns that start with { and end with }
+    json_pattern = r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"
+
+    # Find all potential JSON matches
+    potential_jsons = re.findall(json_pattern, text, re.DOTALL)
+
+    # Try each potential match to see if it's valid JSON
+    for match in potential_jsons:
+        try:
+            return json.loads(match)
+        except json.JSONDecodeError:
+            continue
+
+    # If simple pattern didn't work, try a more complex approach
+    # Look for balanced braces starting from each occurrence of '{'
+    brace_count = 0
+    start_pos = None
+
+    for i, char in enumerate(text):
+        if char == "{":
+            if start_pos is None:
+                start_pos = i
+            brace_count += 1
+        elif char == "}":
+            if start_pos is not None:
+                brace_count -= 1
+                if brace_count == 0:
+                    # Found a complete JSON-like structure
+                    potential_json = text[start_pos : i + 1]
+                    try:
+                        return json.loads(potential_json)
+                    except json.JSONDecodeError:
+                        # Reset and continue looking
+                        start_pos = None
+                        brace_count = 0
+
+    # If no valid JSON found
+    raise ParsingError(
+        "No valid JSON object found in text",
+        details={"text_preview": text[:200] + "..." if len(text) > 200 else text},
+        suggestion="Ensure the text contains a valid JSON object",
+    )
