@@ -31,6 +31,12 @@ from ...core.base import AnnotationTool
 from ...core.conversation.visualizer import JsonVisualizer
 from ...core.text.dict_to_bullet import DictToBulletList
 from ...core.text.text_cleaner import TextCleaner
+from ...di import ConfigInterface, DIContainer, LoggerInterface
+from ...di.bootstrap import (
+    bootstrap_application,
+    get_tool_instances,
+    validate_container_configuration,
+)
 from ...utils import logger
 from .widgets.dict_widget import DictToBulletWidget
 from .widgets.json_widget import JsonVisualizerWidget
@@ -43,22 +49,52 @@ class AnnotationToolkitApp(QMainWindow):
     Main GUI application for the annotation swiss knife.
     """
 
-    def __init__(self, config: Optional[Config] = None):
+    def __init__(
+        self, config: Optional[Config] = None, container: Optional[DIContainer] = None
+    ):
         """
         Initialize the main application.
 
         Args:
             config (Optional[Config]): The configuration.
                 If None, a default configuration is created.
+            container (Optional[DIContainer]): The DI container.
+                If None, a new container will be bootstrapped.
         """
         super().__init__()
         logger.info("Initializing Annotation Swiss Knife GUI application")
 
-        # Initialize configuration
-        self.config = config or Config()
-        logger.debug("Configuration initialized")
+        # Load fonts early to prevent loading delays and set application font
+        self._load_fonts()
 
-        # Set up tools
+        # Set the application font globally to prevent Qt from looking for other fonts
+        app_font = QFont(getattr(self, "selected_font_family", "Arial"), 12)
+        QApplication.instance().setFont(app_font)
+
+        # Initialize configuration only once
+        if config is not None:
+            self.config = config
+            logger.debug("Using provided configuration")
+        else:
+            self.config = Config()
+            logger.info("Using default configuration")
+            logger.info("Configuration initialized successfully")
+
+        # Initialize or use provided DI container
+        if container is None:
+            logger.info("Bootstrapping DI container")
+            self.container = bootstrap_application(self.config)
+
+            # Validate container configuration
+            if not validate_container_configuration(self.container):
+                raise RuntimeError("DI container validation failed")
+
+            logger.info("DI container initialized and validated successfully")
+        else:
+            logger.info("Using provided DI container")
+            self.container = container
+
+        # Set up tools using dependency injection
         self.tools = {}
         self._initialize_tools()
 
@@ -68,9 +104,33 @@ class AnnotationToolkitApp(QMainWindow):
 
     def _initialize_tools(self) -> None:
         """
-        Initialize the annotation tools.
+        Initialize the annotation tools using dependency injection.
         """
-        logger.info("Initializing annotation tools")
+        logger.info("Initializing annotation tools using DI container")
+
+        try:
+            # Get tool instances from the DI container
+            self.tools = get_tool_instances(self.container)
+
+            logger.info(f"Successfully initialized {len(self.tools)} tools via DI:")
+            for tool_name in self.tools:
+                logger.debug(f"  - {tool_name}")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize tools via DI container: {e}")
+
+            # Fallback to manual initialization if DI fails
+            logger.warning("Falling back to manual tool initialization")
+            self._initialize_tools_fallback()
+
+    def _initialize_tools_fallback(self) -> None:
+        """
+        Fallback method to initialize tools manually if DI fails.
+
+        This method preserves the original tool initialization logic
+        as a safety net.
+        """
+        logger.info("Initializing annotation tools (fallback mode)")
 
         # Initialize dictionary to bullet list tool
         dict_tool_enabled = self.config.get(
@@ -124,7 +184,7 @@ class AnnotationToolkitApp(QMainWindow):
             self.tools[text_cleaner_tool.name] = text_cleaner_tool
             logger.info(f"Initialized tool: {text_cleaner_tool.name}")
 
-        logger.info(f"Initialized {len(self.tools)} tools")
+        logger.info(f"Initialized {len(self.tools)} tools (fallback mode)")
 
     def _init_ui(self) -> None:
         """
@@ -183,7 +243,9 @@ class AnnotationToolkitApp(QMainWindow):
         # Title with custom font
         title_font_size = self.config.get("ui", "font_size", default=14) + 2
         header_title = QLabel("Annotation Swiss Knife")
-        header_title.setFont(QFont("Poppins", title_font_size, QFont.Bold))
+        header_title.setFont(
+            QFont(self.selected_font_family, title_font_size, QFont.Bold)
+        )
         header_title.setAlignment(Qt.AlignCenter)
         header_title.setObjectName("headerTitle")
         header_layout.addWidget(header_title)
@@ -257,16 +319,46 @@ class AnnotationToolkitApp(QMainWindow):
         """
         Load custom fonts for the application.
         """
-        # Try to load Poppins font if available
-        # If not available, the system will fall back to default fonts
+        # Use system fonts to avoid the 157ms font loading delay
+        # Preference order: system-specific fonts that are commonly available
         try:
-            # Check if Poppins is already available in the system
             font_db = QFontDatabase()
-            fonts = font_db.families()
-            if "Poppins" not in fonts:
-                logger.debug("Poppins font not found in system, using default fonts")
+            available_fonts = font_db.families()
+
+            # Define font preference order based on platform
+            import platform
+
+            system = platform.system()
+
+            if system == "Darwin":  # macOS
+                preferred_fonts = [
+                    "SF Pro Display",
+                    "Helvetica Neue",
+                    ".AppleSystemUIFont",
+                    "Arial",
+                ]
+            elif system == "Windows":
+                preferred_fonts = ["Segoe UI", "Calibri", "Arial"]
+            else:  # Linux and others
+                preferred_fonts = ["Ubuntu", "Roboto", "DejaVu Sans", "Arial"]
+
+            # Find the first available preferred font
+            self.selected_font_family = None
+            for font in preferred_fonts:
+                if font in available_fonts or font.startswith(
+                    "-"
+                ):  # -apple-system is special
+                    self.selected_font_family = font
+                    logger.debug(f"Using font family: {font}")
+                    break
+
+            if not self.selected_font_family:
+                self.selected_font_family = "Arial"  # Fallback to Arial
+                logger.debug("Using fallback font: Arial")
+
         except Exception as e:
             logger.warning(f"Error loading custom fonts: {str(e)}")
+            self.selected_font_family = "Arial"
 
     def _go_to_home(self) -> None:
         """
@@ -359,7 +451,6 @@ class AnnotationToolkitApp(QMainWindow):
             #headerTitle, #mainTitle {
                 color: #ffffff;
                 font-weight: 600;
-                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
             }
             #mainDescription, #footerLabel, #statusLabel {
                 color: #b8b8b8;
@@ -368,7 +459,6 @@ class AnnotationToolkitApp(QMainWindow):
             #sectionTitle, #fieldLabel {
                 color: #ffffff;
                 font-weight: 600;
-                text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
             }
             #searchFrame {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -445,12 +535,10 @@ class AnnotationToolkitApp(QMainWindow):
             #homeButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                     stop: 0 rgba(97, 97, 97, 0.9), stop: 1 rgba(66, 66, 66, 0.9));
-                transform: translateY(-1px);
             }
             #homeButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                     stop: 0 rgba(33, 33, 33, 0.9), stop: 1 rgba(24, 24, 24, 0.9));
-                transform: translateY(0px);
             }
             QLabel {
                 color: #e8e8e8;
@@ -546,7 +634,6 @@ class AnnotationToolkitApp(QMainWindow):
                 border-right: none;
                 width: 6px;
                 height: 6px;
-                transform: rotate(45deg);
                 margin-top: -3px;
             }
             QCheckBox {
@@ -613,7 +700,6 @@ class AnnotationToolkitApp(QMainWindow):
             #headerTitle, #mainTitle {
                 color: #1a1a1a;
                 font-weight: 600;
-                text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
             }
             #mainDescription, #footerLabel, #statusLabel {
                 color: #666666;
@@ -622,7 +708,6 @@ class AnnotationToolkitApp(QMainWindow):
             #sectionTitle, #fieldLabel {
                 color: #1a1a1a;
                 font-weight: 600;
-                text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
             }
             #searchFrame {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -699,13 +784,10 @@ class AnnotationToolkitApp(QMainWindow):
             #homeButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                     stop: 0 rgba(189, 189, 189, 0.9), stop: 1 rgba(158, 158, 158, 0.9));
-                transform: translateY(-1px);
-                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
             }
             #homeButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                     stop: 0 rgba(158, 158, 158, 0.9), stop: 1 rgba(117, 117, 117, 0.9));
-                transform: translateY(0px);
             }
             QLabel {
                 color: #1a1a1a;
@@ -801,7 +883,6 @@ class AnnotationToolkitApp(QMainWindow):
                 border-right: none;
                 width: 6px;
                 height: 6px;
-                transform: rotate(45deg);
                 margin-top: -3px;
             }
             QCheckBox {

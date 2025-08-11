@@ -13,6 +13,8 @@ from typing import Optional, Sequence
 from .config import Config
 from .core.conversation.visualizer import JsonVisualizer
 from .core.text.dict_to_bullet import DictToBulletList
+from .di import get_container, resolve, DIContainer, ConfigInterface
+from .di.bootstrap import bootstrap_application, validate_container_configuration
 from .ui.cli.commands import (
     run_dict_to_bullet_command,
     run_json_visualizer_command,

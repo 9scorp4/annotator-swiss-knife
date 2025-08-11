@@ -15,6 +15,8 @@ from ...core.base import ToolExecutionError
 from ...core.conversation.visualizer import JsonVisualizer
 from ...core.text.dict_to_bullet import DictToBulletList
 from ...core.text.text_cleaner import TextCleaner
+from ...di import DIContainer
+from ...di.bootstrap import bootstrap_application, get_tool_instances, validate_container_configuration
 from ...utils import logger
 from ...utils.file_utils import load_json
 
@@ -34,9 +36,22 @@ def run_dict_to_bullet_command(args: argparse.Namespace, config: Config) -> int:
     logger.debug(f"Command arguments: {args}")
 
     try:
-        # Create the tool
-        logger.debug(f"Creating DictToBulletList tool with format: {args.format}")
-        tool = DictToBulletList(markdown_output=(args.format == "markdown"))
+        # Bootstrap DI container and get the tool
+        logger.debug("Bootstrapping DI container for command")
+        container = bootstrap_application(config)
+        
+        if not validate_container_configuration(container):
+            logger.error("DI container validation failed")
+            print("Error: Failed to initialize application services", file=sys.stderr)
+            return 1
+            
+        # Get the tool from the container
+        logger.debug("Resolving DictToBulletList tool from DI container")
+        tool = container.resolve(DictToBulletList)
+        
+        # Override the markdown output setting based on command line arg
+        tool.markdown_output = (args.format == "markdown")
+        logger.debug(f"Set tool markdown_output to: {tool.markdown_output}")
 
         # Load input data
         input_path = Path(args.input_file)
@@ -108,25 +123,22 @@ def run_json_visualizer_command(args: argparse.Namespace, config: Config) -> int
     logger.debug(f"Command arguments: {args}")
 
     try:
-        # Get color settings from config
-        logger.debug("Getting color settings from config")
-        user_message_color = config.get(
-            "tools", "conversation_visualizer", "user_message_color", default="#0d47a1"
-        )
-        ai_message_color = config.get(
-            "tools", "conversation_visualizer", "ai_message_color", default="#33691e"
-        )
-        logger.debug(
-            f"Using colors - user: {user_message_color}, AI: {ai_message_color}"
-        )
-
-        # Create the tool
-        logger.debug(f"Creating JsonVisualizer tool with format: {args.format}")
-        tool = JsonVisualizer(
-            output_format=args.format,
-            user_message_color=user_message_color,
-            ai_message_color=ai_message_color,
-        )
+        # Bootstrap DI container and get the tool
+        logger.debug("Bootstrapping DI container for command")
+        container = bootstrap_application(config)
+        
+        if not validate_container_configuration(container):
+            logger.error("DI container validation failed")
+            print("Error: Failed to initialize application services", file=sys.stderr)
+            return 1
+            
+        # Get the tool from the container
+        logger.debug("Resolving JsonVisualizer tool from DI container")
+        tool = container.resolve(JsonVisualizer)
+        
+        # Override the output format setting based on command line arg
+        tool._output_format = args.format
+        logger.debug(f"Set tool output_format to: {tool._output_format}")
 
         # Load input data
         input_path = Path(args.input_file)
@@ -229,9 +241,26 @@ def run_text_cleaner_command(args: argparse.Namespace, config: Config) -> int:
     logger.debug(f"Command arguments: {args}")
 
     try:
-        # Create the tool
-        logger.debug(f"Creating TextCleaner tool with format: {args.format}")
-        tool = TextCleaner(output_format=args.format)
+        # Bootstrap DI container and get the tool
+        logger.debug("Bootstrapping DI container for command")
+        container = bootstrap_application(config)
+        
+        if not validate_container_configuration(container):
+            logger.error("DI container validation failed")
+            print("Error: Failed to initialize application services", file=sys.stderr)
+            return 1
+            
+        # Get the tool from the container
+        logger.debug("Resolving TextCleaner tool from DI container")
+        tool = container.resolve(TextCleaner)
+        
+        # Override the output format setting based on command line arg if needed
+        # Note: TextCleaner might not have an output_format parameter, so we handle this gracefully
+        if hasattr(tool, '_output_format'):
+            tool._output_format = args.format
+            logger.debug(f"Set tool output_format to: {tool._output_format}")
+        else:
+            logger.debug("TextCleaner tool does not support output_format configuration")
 
         # Load input data
         input_path = Path(args.input_file)
