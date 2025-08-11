@@ -10,12 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 from ..utils import logger
-from ..utils.errors import (
-    ErrorCode,
-    ProcessingError,
-    TypeValidationError,
-    safe_execute
-)
+from ..utils.errors import ErrorCode, ProcessingError, safe_execute, TypeValidationError
 
 
 class AnnotationTool(ABC):
@@ -107,7 +102,7 @@ class TextAnnotationTool(AnnotationTool):
                 error_code=ErrorCode.PROCESSING_ERROR,
                 details={"tool": tool_name, "data_type": type(data).__name__},
                 suggestion="Check the input text format and ensure it's compatible with this tool.",
-                cause=e
+                cause=e,
             )
 
 
@@ -148,7 +143,7 @@ class JsonAnnotationTool(AnnotationTool):
                 [dict, list],
                 type(data),
                 details={"tool": tool_name},
-                suggestion="Ensure you're passing a valid JSON object (dictionary or list) to this tool."
+                suggestion="Ensure you're passing a valid JSON object (dictionary or list) to this tool.",
             )
 
         try:
@@ -162,10 +157,12 @@ class JsonAnnotationTool(AnnotationTool):
                 error_code=ErrorCode.PROCESSING_ERROR,
                 details={"tool": tool_name, "data_type": type(data).__name__},
                 suggestion="Check the JSON structure and ensure it meets the requirements for this tool.",
-                cause=e
+                cause=e,
             )
 
 
 # Import the configuration error from the errors module
-from ..utils.errors import ConfigurationError as ToolConfigurationError
-from ..utils.errors import ProcessingError as ToolExecutionError
+from ..utils.errors import (
+    ConfigurationError as ToolConfigurationError,
+    ToolExecutionError,
+)

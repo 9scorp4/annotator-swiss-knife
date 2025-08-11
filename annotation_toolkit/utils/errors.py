@@ -29,6 +29,7 @@ class ErrorCode(Enum):
     - 5000-5999: External service errors
     - 9000-9999: Unexpected/internal errors
     """
+
     # Configuration errors (1000-1999)
     INVALID_CONFIGURATION = 1000
     MISSING_CONFIGURATION = 1001
@@ -79,7 +80,7 @@ class ErrorContext:
         suggestion: Optional[str] = None,
         module: Optional[str] = None,
         function: Optional[str] = None,
-        line_number: Optional[int] = None
+        line_number: Optional[int] = None,
     ):
         """
         Initialize the error context.
@@ -130,18 +131,15 @@ class ErrorContext:
             A dictionary representation of the error context.
         """
         return {
-            "error_code": {
-                "code": self.error_code.value,
-                "name": self.error_code.name
-            },
+            "error_code": {"code": self.error_code.value, "name": self.error_code.name},
             "message": self.message,
             "details": self.details,
             "suggestion": self.suggestion,
             "location": {
                 "module": self.module,
                 "function": self.function,
-                "line_number": self.line_number
-            }
+                "line_number": self.line_number,
+            },
         }
 
     def __str__(self) -> str:
@@ -177,7 +175,7 @@ class AnnotationToolkitError(Exception):
         error_code: ErrorCode = ErrorCode.UNEXPECTED_ERROR,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         """
         Initialize the exception.
@@ -193,7 +191,7 @@ class AnnotationToolkitError(Exception):
             error_code=error_code,
             message=message,
             details=details,
-            suggestion=suggestion
+            suggestion=suggestion,
         )
         self.cause = cause
 
@@ -257,6 +255,7 @@ class AnnotationToolkitError(Exception):
 
 # Configuration Errors
 
+
 class ConfigurationError(AnnotationToolkitError):
     """Base class for configuration-related errors."""
 
@@ -266,7 +265,7 @@ class ConfigurationError(AnnotationToolkitError):
         error_code: ErrorCode = ErrorCode.INVALID_CONFIGURATION,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message, error_code, details, suggestion, cause)
 
@@ -279,14 +278,15 @@ class MissingConfigurationError(ConfigurationError):
         message: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             message,
             ErrorCode.MISSING_CONFIGURATION,
             details,
-            suggestion or "Check the configuration file and ensure all required fields are present.",
-            cause
+            suggestion
+            or "Check the configuration file and ensure all required fields are present.",
+            cause,
         )
 
 
@@ -298,18 +298,20 @@ class InvalidConfigurationError(ConfigurationError):
         message: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             message,
             ErrorCode.INVALID_CONFIGURATION,
             details,
-            suggestion or "Check the configuration values and ensure they meet the required format and constraints.",
-            cause
+            suggestion
+            or "Check the configuration values and ensure they meet the required format and constraints.",
+            cause,
         )
 
 
 # Input/Validation Errors
+
 
 class ValidationError(AnnotationToolkitError):
     """Base class for input validation errors."""
@@ -320,7 +322,7 @@ class ValidationError(AnnotationToolkitError):
         error_code: ErrorCode = ErrorCode.INVALID_INPUT,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message, error_code, details, suggestion, cause)
 
@@ -333,14 +335,14 @@ class MissingRequiredFieldError(ValidationError):
         field_name: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             f"Missing required field: {field_name}",
             ErrorCode.MISSING_REQUIRED_FIELD,
             details,
             suggestion or f"Ensure the '{field_name}' field is provided in the input.",
-            cause
+            cause,
         )
 
 
@@ -354,7 +356,7 @@ class TypeValidationError(ValidationError):
         actual_type: Type,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         if isinstance(expected_type, list):
             expected_type_str = " or ".join([t.__name__ for t in expected_type])
@@ -365,8 +367,9 @@ class TypeValidationError(ValidationError):
             f"Invalid type for '{field_name}': expected {expected_type_str}, got {actual_type.__name__}",
             ErrorCode.TYPE_ERROR,
             details,
-            suggestion or f"Ensure the '{field_name}' field is of type {expected_type_str}.",
-            cause
+            suggestion
+            or f"Ensure the '{field_name}' field is of type {expected_type_str}.",
+            cause,
         )
 
 
@@ -380,18 +383,20 @@ class ValueValidationError(ValidationError):
         constraint: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             f"Invalid value for '{field_name}': {value} (constraint: {constraint})",
             ErrorCode.VALUE_ERROR,
             details,
-            suggestion or f"Ensure the '{field_name}' field meets the constraint: {constraint}.",
-            cause
+            suggestion
+            or f"Ensure the '{field_name}' field meets the constraint: {constraint}.",
+            cause,
         )
 
 
 # Processing Errors
+
 
 class ProcessingError(AnnotationToolkitError):
     """Base class for errors that occur during data processing."""
@@ -402,7 +407,7 @@ class ProcessingError(AnnotationToolkitError):
         error_code: ErrorCode = ErrorCode.PROCESSING_ERROR,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message, error_code, details, suggestion, cause)
 
@@ -415,14 +420,25 @@ class TransformationError(ProcessingError):
         message: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
-            message,
-            ErrorCode.TRANSFORMATION_ERROR,
-            details,
-            suggestion,
-            cause
+            message, ErrorCode.TRANSFORMATION_ERROR, details, suggestion, cause
+        )
+
+
+class ToolExecutionError(ProcessingError):
+    """Exception raised when a tool execution fails."""
+
+    def __init__(
+        self,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+        suggestion: Optional[str] = None,
+        cause: Optional[Exception] = None,
+    ):
+        super().__init__(
+            message, ErrorCode.PROCESSING_ERROR, details, suggestion, cause
         )
 
 
@@ -434,18 +450,13 @@ class ParsingError(ProcessingError):
         message: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
-        super().__init__(
-            message,
-            ErrorCode.PARSING_ERROR,
-            details,
-            suggestion,
-            cause
-        )
+        super().__init__(message, ErrorCode.PARSING_ERROR, details, suggestion, cause)
 
 
 # I/O Errors
+
 
 class IOError(AnnotationToolkitError):
     """Base class for input/output errors."""
@@ -456,7 +467,7 @@ class IOError(AnnotationToolkitError):
         error_code: ErrorCode = ErrorCode.FILE_READ_ERROR,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message, error_code, details, suggestion, cause)
 
@@ -469,14 +480,14 @@ class FileNotFoundError(IOError):
         file_path: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             f"File not found: {file_path}",
             ErrorCode.FILE_NOT_FOUND,
             details,
             suggestion or "Check that the file exists and the path is correct.",
-            cause
+            cause,
         )
 
 
@@ -488,14 +499,14 @@ class FileReadError(IOError):
         file_path: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             f"Failed to read file: {file_path}",
             ErrorCode.FILE_READ_ERROR,
             details,
             suggestion or "Check file permissions and that the file is not corrupted.",
-            cause
+            cause,
         )
 
 
@@ -507,18 +518,19 @@ class FileWriteError(IOError):
         file_path: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             f"Failed to write to file: {file_path}",
             ErrorCode.FILE_WRITE_ERROR,
             details,
             suggestion or "Check file permissions and available disk space.",
-            cause
+            cause,
         )
 
 
 # External Service Errors
+
 
 class ServiceError(AnnotationToolkitError):
     """Base class for errors related to external services."""
@@ -529,7 +541,7 @@ class ServiceError(AnnotationToolkitError):
         error_code: ErrorCode = ErrorCode.SERVICE_ERROR,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(message, error_code, details, suggestion, cause)
 
@@ -542,14 +554,15 @@ class ServiceUnavailableError(ServiceError):
         service_name: str,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         super().__init__(
             f"Service unavailable: {service_name}",
             ErrorCode.SERVICE_UNAVAILABLE,
             details,
-            suggestion or f"Check that the {service_name} service is running and accessible.",
-            cause
+            suggestion
+            or f"Check that the {service_name} service is running and accessible.",
+            cause,
         )
 
 
@@ -562,26 +575,28 @@ class ServiceTimeoutError(ServiceError):
         timeout: Optional[float] = None,
         details: Optional[Dict[str, Any]] = None,
         suggestion: Optional[str] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         timeout_str = f" after {timeout} seconds" if timeout is not None else ""
         super().__init__(
             f"Service timeout: {service_name}{timeout_str}",
             ErrorCode.SERVICE_TIMEOUT,
             details,
-            suggestion or f"Check the {service_name} service status or increase the timeout.",
-            cause
+            suggestion
+            or f"Check the {service_name} service status or increase the timeout.",
+            cause,
         )
 
 
 # Utility functions
+
 
 def handle_exception(
     exc: Exception,
     error_code: ErrorCode = ErrorCode.UNEXPECTED_ERROR,
     message: Optional[str] = None,
     details: Optional[Dict[str, Any]] = None,
-    suggestion: Optional[str] = None
+    suggestion: Optional[str] = None,
 ) -> AnnotationToolkitError:
     """
     Handle an exception by wrapping it in an appropriate AnnotationToolkitError.
@@ -602,11 +617,7 @@ def handle_exception(
 
     # Create a new AnnotationToolkitError that wraps the original exception
     return AnnotationToolkitError(
-        message or str(exc),
-        error_code,
-        details,
-        suggestion,
-        exc
+        message or str(exc), error_code, details, suggestion, exc
     )
 
 
@@ -617,7 +628,7 @@ def safe_execute(
     error_message: Optional[str] = None,
     details: Optional[Dict[str, Any]] = None,
     suggestion: Optional[str] = None,
-    **kwargs
+    **kwargs,
 ) -> Any:
     """
     Execute a function safely, catching and handling any exceptions.
@@ -658,13 +669,7 @@ def safe_execute(
             details["args"] = safe_args
 
         # Wrap the exception in an AnnotationToolkitError and raise it
-        raise handle_exception(
-            exc,
-            error_code,
-            error_message,
-            details,
-            suggestion
-        )
+        raise handle_exception(exc, error_code, error_message, details, suggestion)
 
 
 def format_exception(exc: Exception) -> str:
@@ -684,20 +689,16 @@ def format_exception(exc: Exception) -> str:
             result += f"\n\nCaused by: {str(exc.cause)}"
             if not isinstance(exc.cause, AnnotationToolkitError):
                 # Include traceback for non-custom exceptions
-                tb = "".join(traceback.format_exception(
-                    type(exc.cause),
-                    exc.cause,
-                    exc.cause.__traceback__
-                ))
+                tb = "".join(
+                    traceback.format_exception(
+                        type(exc.cause), exc.cause, exc.cause.__traceback__
+                    )
+                )
                 result += f"\n\nTraceback:\n{tb}"
     else:
         # For standard exceptions, include the traceback
         result = f"{type(exc).__name__}: {str(exc)}"
-        tb = "".join(traceback.format_exception(
-            type(exc),
-            exc,
-            exc.__traceback__
-        ))
+        tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
         result += f"\n\nTraceback:\n{tb}"
 
     return result
@@ -719,22 +720,18 @@ def get_error_details(exc: Exception) -> Dict[str, Any]:
         if exc.cause:
             result["cause"] = {
                 "type": type(exc.cause).__name__,
-                "message": str(exc.cause)
+                "message": str(exc.cause),
             }
     else:
         # For standard exceptions, create a basic dictionary
         result = {
             "error_code": {
                 "code": ErrorCode.UNEXPECTED_ERROR.value,
-                "name": ErrorCode.UNEXPECTED_ERROR.name
+                "name": ErrorCode.UNEXPECTED_ERROR.name,
             },
             "type": type(exc).__name__,
             "message": str(exc),
-            "traceback": traceback.format_exception(
-                type(exc),
-                exc,
-                exc.__traceback__
-            )
+            "traceback": traceback.format_exception(type(exc), exc, exc.__traceback__),
         }
 
     return result
