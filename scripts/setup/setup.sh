@@ -118,33 +118,117 @@ cat > "$PROJECT_DIR/scripts/run/run.sh" << 'EOF'
 #!/bin/bash
 # Run script for Data Annotation Swiss Knife
 
-# Get the directory of this script
+set -e  # Exit on any error
+
+# Text formatting for better user experience
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Get the directory of this script and project root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-VENV_DIR="$SCRIPT_DIR/venv"
-ACTIVATE_SCRIPT="$VENV_DIR/bin/activate"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." &> /dev/null && pwd )"
+VENV_DIR="$PROJECT_ROOT/venv"
+
+# Determine the activation script based on OS
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    ACTIVATE_SCRIPT="$VENV_DIR/Scripts/activate"
+else
+    ACTIVATE_SCRIPT="$VENV_DIR/bin/activate"
+fi
+
+# Check if virtual environment exists
+if [ ! -d "$VENV_DIR" ]; then
+    echo -e "${RED}Error: Virtual environment not found at $VENV_DIR${NC}"
+    echo -e "${YELLOW}Please run the setup script first:${NC}"
+    echo -e "  ./scripts/setup/setup.sh"
+    exit 1
+fi
+
+# Check if activation script exists
+if [ ! -f "$ACTIVATE_SCRIPT" ]; then
+    echo -e "${RED}Error: Virtual environment activation script not found at $ACTIVATE_SCRIPT${NC}"
+    echo -e "${YELLOW}Please run the setup script to recreate the virtual environment:${NC}"
+    echo -e "  ./scripts/setup/setup.sh"
+    exit 1
+fi
 
 # Activate virtual environment
+echo -e "${GREEN}Activating virtual environment...${NC}"
 source "$ACTIVATE_SCRIPT"
 
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: Failed to activate virtual environment${NC}"
+    echo -e "${YELLOW}Please run the setup script to recreate the virtual environment:${NC}"
+    echo -e "  ./scripts/setup/setup.sh"
+    exit 1
+fi
+
+# Check if annotation-toolkit command is available
+if ! command -v annotation-toolkit &> /dev/null; then
+    echo -e "${RED}Error: annotation-toolkit command not found${NC}"
+    echo -e "${YELLOW}Please run the setup script to install the application:${NC}"
+    echo -e "  ./scripts/setup/setup.sh"
+    exit 1
+fi
+
 # Run the application
+echo -e "${GREEN}Running annotation-toolkit...${NC}"
 annotation-toolkit "$@"
 EOF
-chmod +x "$SCRIPT_DIR/run.sh"
+chmod +x "$PROJECT_DIR/scripts/run/run.sh"
 
 # Create run script for Windows
 cat > "$PROJECT_DIR/scripts/run/run.bat" << 'EOF'
 @echo off
 REM Run script for Data Annotation Swiss Knife
 
-REM Get the directory of this script
+setlocal enabledelayedexpansion
+
+REM Get the directory of this script and project root
 SET SCRIPT_DIR=%~dp0
-SET VENV_DIR=%SCRIPT_DIR%venv
+SET PROJECT_ROOT=%SCRIPT_DIR%..\..
+SET VENV_DIR=%PROJECT_ROOT%\venv
 SET ACTIVATE_SCRIPT=%VENV_DIR%\Scripts\activate.bat
 
+REM Check if virtual environment exists
+if not exist "%VENV_DIR%" (
+    echo ERROR: Virtual environment not found at %VENV_DIR%
+    echo Please run the setup script first:
+    echo   scripts\setup\setup.bat
+    exit /b 1
+)
+
+REM Check if activation script exists
+if not exist "%ACTIVATE_SCRIPT%" (
+    echo ERROR: Virtual environment activation script not found at %ACTIVATE_SCRIPT%
+    echo Please run the setup script to recreate the virtual environment:
+    echo   scripts\setup\setup.bat
+    exit /b 1
+)
+
 REM Activate virtual environment
+echo Activating virtual environment...
 call "%ACTIVATE_SCRIPT%"
+if !errorlevel! neq 0 (
+    echo ERROR: Failed to activate virtual environment
+    echo Please run the setup script to recreate the virtual environment:
+    echo   scripts\setup\setup.bat
+    exit /b 1
+)
+
+REM Check if annotation-toolkit command is available
+where annotation-toolkit >nul 2>&1
+if !errorlevel! neq 0 (
+    echo ERROR: annotation-toolkit command not found
+    echo Please run the setup script to install the application:
+    echo   scripts\setup\setup.bat
+    exit /b 1
+)
 
 REM Run the application
+echo Running annotation-toolkit...
 annotation-toolkit %*
 EOF
 
