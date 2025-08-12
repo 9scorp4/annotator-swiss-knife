@@ -5,7 +5,13 @@ setlocal enabledelayedexpansion
 
 REM Get the directory of this script and project root
 SET SCRIPT_DIR=%~dp0
-SET PROJECT_ROOT=%SCRIPT_DIR%..\..
+REM Remove trailing backslash from SCRIPT_DIR if present
+if "%SCRIPT_DIR:~-1%"=="\" set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
+REM Get project root (two levels up from script directory)
+for %%i in ("%SCRIPT_DIR%") do set PARENT_DIR=%%~dpi
+if "%PARENT_DIR:~-1%"=="\" set PARENT_DIR=%PARENT_DIR:~0,-1%
+for %%i in ("%PARENT_DIR%") do set PROJECT_ROOT=%%~dpi
+if "%PROJECT_ROOT:~-1%"=="\" set PROJECT_ROOT=%PROJECT_ROOT:~0,-1%
 SET VENV_DIR=%PROJECT_ROOT%\venv
 SET ACTIVATE_SCRIPT=%VENV_DIR%\Scripts\activate.bat
 

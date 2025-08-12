@@ -43,7 +43,13 @@ echo Found Python %PYTHON_VERSION%
 
 REM Determine the script directory and virtual environment path
 set SCRIPT_DIR=%~dp0
-set PROJECT_DIR=%SCRIPT_DIR%..\..
+REM Remove trailing backslash from SCRIPT_DIR if present
+if "%SCRIPT_DIR:~-1%"=="\" set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
+REM Get project directory (two levels up from script directory)
+for %%i in ("%SCRIPT_DIR%") do set PARENT_DIR=%%~dpi
+if "%PARENT_DIR:~-1%"=="\" set PARENT_DIR=%PARENT_DIR:~0,-1%
+for %%i in ("%PARENT_DIR%") do set PROJECT_DIR=%%~dpi
+if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
 set VENV_DIR=%PROJECT_DIR%\venv
 
 REM Check if virtual environment already exists
@@ -110,13 +116,34 @@ if not exist "%PROJECT_DIR%\scripts\run\run.bat" (
     echo @echo off > "%PROJECT_DIR%\scripts\run\run.bat"
     echo REM Run script for Data Annotation Swiss Knife >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo. >> "%PROJECT_DIR%\scripts\run\run.bat"
-    echo REM Get the directory of this script >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo setlocal enabledelayedexpansion >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo. >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo REM Get the directory of this script and project root >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo SET SCRIPT_DIR=%%~dp0 >> "%PROJECT_DIR%\scripts\run\run.bat"
-    echo SET VENV_DIR=%%SCRIPT_DIR%%..\\..\\venv >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo REM Remove trailing backslash >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo if "%%SCRIPT_DIR:~-1%%"=="\" set SCRIPT_DIR=%%SCRIPT_DIR:~0,-1%% >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo REM Get project root ^(two levels up^) >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo for %%%%i in ^("%%SCRIPT_DIR%%"^) do set PARENT_DIR=%%%%~dpi >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo if "%%PARENT_DIR:~-1%%"=="\" set PARENT_DIR=%%PARENT_DIR:~0,-1%% >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo for %%%%i in ^("%%PARENT_DIR%%"^) do set PROJECT_ROOT=%%%%~dpi >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo if "%%PROJECT_ROOT:~-1%%"=="\" set PROJECT_ROOT=%%PROJECT_ROOT:~0,-1%% >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo SET VENV_DIR=%%PROJECT_ROOT%%\\venv >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo SET ACTIVATE_SCRIPT=%%VENV_DIR%%\\Scripts\\activate.bat >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo. >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo REM Check if virtual environment exists >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo if not exist "%%VENV_DIR%%" ^( >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo     echo ERROR: Virtual environment not found at %%VENV_DIR%% >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo     echo Please run the setup script first: >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo     echo   scripts\\setup\\setup.bat >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo     exit /b 1 >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo ^) >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo. >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo REM Activate virtual environment >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo call "%%ACTIVATE_SCRIPT%%" >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo if ^^!errorlevel^^! neq 0 ^( >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo     echo ERROR: Failed to activate virtual environment >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo     exit /b 1 >> "%PROJECT_DIR%\scripts\run\run.bat"
+    echo ^) >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo. >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo REM Run the application >> "%PROJECT_DIR%\scripts\run\run.bat"
     echo annotation-toolkit %%* >> "%PROJECT_DIR%\scripts\run\run.bat"
