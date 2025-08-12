@@ -45,11 +45,14 @@ REM Determine the script directory and virtual environment path
 set SCRIPT_DIR=%~dp0
 REM Remove trailing backslash from SCRIPT_DIR if present
 if "%SCRIPT_DIR:~-1%"=="\" set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
+
 REM Get project directory (two levels up from script directory)
-for %%i in ("%SCRIPT_DIR%") do set PARENT_DIR=%%~dpi
-if "%PARENT_DIR:~-1%"=="\" set PARENT_DIR=%PARENT_DIR:~0,-1%
-for %%i in ("%PARENT_DIR%") do set PROJECT_DIR=%%~dpi
-if "%PROJECT_DIR:~-1%"=="\" set PROJECT_DIR=%PROJECT_DIR:~0,-1%
+REM Current path: scripts\setup, need to go up to project root
+pushd "%SCRIPT_DIR%"
+cd ..\..
+set PROJECT_DIR=%CD%
+popd
+
 set VENV_DIR=%PROJECT_DIR%\venv
 
 REM Check if virtual environment already exists
