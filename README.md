@@ -34,6 +34,8 @@ This application comes with setup scripts that automate the installation process
 
 #### On Windows:
 
+> 📋 **Windows Users**: For detailed Windows-specific instructions, troubleshooting, and alternative installation methods, see the [**Windows Setup Guide**](WINDOWS_SETUP_GUIDE.md).
+
 **Using PowerShell (Recommended):**
 
 1. Open PowerShell

@@ -1,198 +1,146 @@
 # Setup script for Data Annotation Swiss Knife
 # This script creates a virtual environment and installs the application
 
-# Function to check if running as administrator
-function Test-Administrator {
-    $currentUser = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-    $currentUser.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator)
-}
+param(
+    [switch]$Force = $false
+)
+
+# Text formatting
+$Green = "`e[32m"
+$Red = "`e[31m"
+$Yellow = "`e[33m"
+$Bold = "`e[1m"
+$Reset = "`e[0m"
 
 # Print header
-Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "Data Annotation Swiss Knife Setup Script" -ForegroundColor Cyan
-Write-Host "=========================================" -ForegroundColor Cyan
+Write-Host "${Bold}=========================================${Reset}"
+Write-Host "${Bold}Data Annotation Swiss Knife Setup Script${Reset}"
+Write-Host "${Bold}=========================================${Reset}"
 Write-Host ""
 
-# Check if Python 3.8+ is installed
-Write-Host "Checking Python version..." -ForegroundColor Cyan
-$pythonCommand = $null
-
-# Try python3 command first
+# Check if Python is installed
+Write-Host "${Bold}Checking Python version...${Reset}"
 try {
-    $pythonVersion = python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
-    if ($?) {
-        $pythonCommand = "python3"
+    $pythonVersion = python --version 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Python not found"
     }
-}
-catch {
-    # Python3 command not found, try python
-    try {
-        $pythonVersion = python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
-        if ($?) {
-            $pythonCommand = "python"
-        }
-    }
-    catch {
-        # Python command not found
-    }
-}
 
-if ($null -eq $pythonCommand) {
-    Write-Host "Error: Python 3.8 or higher is required but not found." -ForegroundColor Red
-    Write-Host "Please install Python 3.8 or higher from https://www.python.org/downloads/ and try again."
+    $versionMatch = $pythonVersion -match "Python (\d+)\.(\d+)\.(\d+)"
+    if (-not $versionMatch) {
+        throw "Could not parse Python version"
+    }
+
+    $major = [int]$Matches[1]
+    $minor = [int]$Matches[2]
+
+    if ($major -lt 3 -or ($major -eq 3 -and $minor -lt 8)) {
+        Write-Host "${Red}Error: Python 3.8 or higher is required.${Reset}"
+        Write-Host "Found: $pythonVersion"
+        Write-Host "Please install Python 3.8 or higher from https://python.org/downloads/"
+        exit 1
+    }
+
+    Write-Host "${Green}Found: $pythonVersion${Reset}"
+} catch {
+    Write-Host "${Red}Error: Python is required but not found.${Reset}"
+    Write-Host "Please install Python 3.8 or higher and add it to your PATH."
+    Write-Host "Download from: https://python.org/downloads/"
     exit 1
 }
 
-# Check Python version
-$pythonVersion = & $pythonCommand -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-$pythonMajor = [int]($pythonVersion.Split('.')[0])
-$pythonMinor = [int]($pythonVersion.Split('.')[1])
-
-if ($pythonMajor -lt 3 -or ($pythonMajor -eq 3 -and $pythonMinor -lt 8)) {
-    Write-Host "Error: Python 3.8 or higher is required." -ForegroundColor Red
-    Write-Host "Found Python $pythonVersion"
-    Write-Host "Please install Python 3.8 or higher from https://www.python.org/downloads/ and try again."
-    exit 1
-}
-
-Write-Host "Found Python $pythonVersion" -ForegroundColor Green
-
-# Determine the script directory and virtual environment path
-$scriptDir = $PSScriptRoot
-$projectDir = (Get-Item $scriptDir).Parent.Parent.FullName
-$venvDir = Join-Path -Path $projectDir -ChildPath "venv"
+# Get script directory and project root
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
+$venvDir = Join-Path $projectRoot "venv"
 
 # Check if virtual environment already exists
-if (Test-Path -Path $venvDir) {
-    Write-Host "Virtual environment already exists at $venvDir" -ForegroundColor Yellow
-    $recreate = Read-Host "Do you want to recreate it? (y/n)"
-    if ($recreate -eq "y" -or $recreate -eq "Y") {
-        Write-Host "Removing existing virtual environment..." -ForegroundColor Cyan
-        Remove-Item -Path $venvDir -Recurse -Force
-    }
-    else {
-        Write-Host "Using existing virtual environment..." -ForegroundColor Cyan
+if (Test-Path $venvDir) {
+    Write-Host "${Yellow}Virtual environment already exists at $venvDir${Reset}"
+    if ($Force) {
+        Write-Host "${Bold}Force flag specified. Removing existing virtual environment...${Reset}"
+        Remove-Item -Recurse -Force $venvDir
+    } else {
+        $recreate = Read-Host "Do you want to recreate it? (y/n)"
+        if ($recreate -match "^[Yy]") {
+            Write-Host "${Bold}Removing existing virtual environment...${Reset}"
+            Remove-Item -Recurse -Force $venvDir
+        } else {
+            Write-Host "${Bold}Using existing virtual environment...${Reset}"
+        }
     }
 }
 
 # Create virtual environment if it doesn't exist
-if (-not (Test-Path -Path $venvDir)) {
-    Write-Host "Creating virtual environment..." -ForegroundColor Cyan
-    & $pythonCommand -m venv $venvDir
-    if (-not $?) {
-        Write-Host "Error: Failed to create virtual environment." -ForegroundColor Red
+if (-not (Test-Path $venvDir)) {
+    Write-Host "${Bold}Creating virtual environment...${Reset}"
+    python -m venv $venvDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "${Red}Error: Failed to create virtual environment.${Reset}"
+        Write-Host "Make sure you have the 'venv' module available."
         exit 1
     }
-    Write-Host "Virtual environment created successfully." -ForegroundColor Green
+    Write-Host "${Green}Virtual environment created successfully.${Reset}"
 }
-
-# Determine the activation script
-$activateScript = Join-Path -Path $venvDir -ChildPath "Scripts\Activate.ps1"
 
 # Activate virtual environment
-Write-Host "Activating virtual environment..." -ForegroundColor Cyan
+Write-Host "${Bold}Activating virtual environment...${Reset}"
+$activateScript = Join-Path $venvDir "Scripts\Activate.ps1"
+
+# Enable script execution if needed
 try {
-    . $activateScript
+    & $activateScript
+} catch {
+    Write-Host "${Yellow}Enabling PowerShell script execution...${Reset}"
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+    & $activateScript
 }
-catch {
-    Write-Host "Error: Failed to activate virtual environment." -ForegroundColor Red
-    Write-Host $_.Exception.Message
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "${Red}Error: Failed to activate virtual environment.${Reset}"
     exit 1
 }
 
 # Upgrade pip
-Write-Host "Upgrading pip..." -ForegroundColor Cyan
-try {
-    pip install --upgrade pip
-}
-catch {
-    Write-Host "Warning: Failed to upgrade pip. Continuing anyway..." -ForegroundColor Yellow
+Write-Host "${Bold}Upgrading pip...${Reset}"
+python -m pip install --upgrade pip
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "${Yellow}Warning: Failed to upgrade pip. Continuing anyway...${Reset}"
 }
 
 # Install dependencies
-Write-Host "Installing dependencies..." -ForegroundColor Cyan
-$requirementsFile = Join-Path -Path $projectDir -ChildPath "requirements.txt"
-try {
-    pip install -r $requirementsFile
-    if (-not $?) {
-        throw "pip install failed"
-    }
-}
-catch {
-    Write-Host "Error: Failed to install dependencies." -ForegroundColor Red
-    Write-Host $_.Exception.Message
+Write-Host "${Bold}Installing dependencies...${Reset}"
+$requirementsPath = Join-Path $projectRoot "requirements.txt"
+pip install -r $requirementsPath
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "${Red}Error: Failed to install dependencies.${Reset}"
+    Write-Host "Make sure requirements.txt exists and contains valid packages."
     exit 1
 }
-Write-Host "Dependencies installed successfully." -ForegroundColor Green
+Write-Host "${Green}Dependencies installed successfully.${Reset}"
 
 # Install the application in development mode
-Write-Host "Installing the application..." -ForegroundColor Cyan
-try {
-    pip install -e $projectDir
-    if (-not $?) {
-        throw "pip install failed"
-    }
-}
-catch {
-    Write-Host "Error: Failed to install the application." -ForegroundColor Red
-    Write-Host $_.Exception.Message
+Write-Host "${Bold}Installing the application...${Reset}"
+pip install -e $projectRoot
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "${Red}Error: Failed to install the application.${Reset}"
+    Write-Host "Make sure setup.py exists in the project root."
     exit 1
 }
-Write-Host "Application installed successfully." -ForegroundColor Green
+Write-Host "${Green}Application installed successfully.${Reset}"
 
-# Create run script for PowerShell
-Write-Host "Creating run scripts..." -ForegroundColor Cyan
-$runPsScript = @"
-# Run script for Data Annotation Swiss Knife
-
-# Get the directory of this script
-`$scriptDir = `$PSScriptRoot
-`$venvDir = Join-Path -Path `$scriptDir -ChildPath "venv"
-`$activateScript = Join-Path -Path `$venvDir -ChildPath "Scripts\Activate.ps1"
-
-# Activate virtual environment
-. `$activateScript
-
-# Run the application
-annotation-toolkit `$args
-"@
-
-$runPsPath = Join-Path -Path $projectDir -ChildPath "scripts\run\run.ps1"
-$runPsScript | Out-File -FilePath $runPsPath -Encoding utf8
-
-Write-Host "Run scripts created successfully." -ForegroundColor Green
-
-# Print success message
 Write-Host ""
-Write-Host "Setup completed successfully!" -ForegroundColor Green
+Write-Host "${Bold}${Green}Setup completed successfully!${Reset}"
 Write-Host ""
-Write-Host "How to run the application:" -ForegroundColor Cyan
+Write-Host "${Bold}How to run the application:${Reset}"
 Write-Host ""
-Write-Host "In PowerShell:" -ForegroundColor White
-Write-Host "  .\run.ps1 gui" -ForegroundColor Yellow -NoNewline
-Write-Host " - Launch the graphical user interface"
-Write-Host "  .\run.ps1 dict2bullet input.json -o output.md" -ForegroundColor Yellow -NoNewline
-Write-Host " - Convert dictionary to bullet list"
-Write-Host "  .\run.ps1 jsonvis conversation.json -o output.txt" -ForegroundColor Yellow -NoNewline
-Write-Host " - Visualize conversation"
+Write-Host "  ${Yellow}scripts\run\run.bat gui${Reset}                           - Launch the graphical user interface"
+Write-Host "  ${Yellow}scripts\run\run.bat dict2bullet input.json -o output.md${Reset}  - Convert dictionary to bullet list"
+Write-Host "  ${Yellow}scripts\run\run.bat jsonvis conversation.json -o output.txt${Reset}  - Visualize conversation"
 Write-Host ""
-Write-Host "Using Command Prompt:" -ForegroundColor White
-Write-Host "  run.bat gui" -ForegroundColor Yellow -NoNewline
-Write-Host " - Launch the graphical user interface"
-Write-Host "  run.bat dict2bullet input.json -o output.md" -ForegroundColor Yellow -NoNewline
-Write-Host " - Convert dictionary to bullet list"
-Write-Host "  run.bat jsonvis conversation.json -o output.txt" -ForegroundColor Yellow -NoNewline
-Write-Host " - Visualize conversation"
+Write-Host "Or using PowerShell:"
+Write-Host "  ${Yellow}scripts\run\run.ps1 gui${Reset}                           - Launch the graphical user interface"
 Write-Host ""
-Write-Host "For more information, see the README.md file or run:" -ForegroundColor White
-Write-Host "  .\run.ps1 --help" -ForegroundColor Yellow -NoNewline
-Write-Host " (PowerShell)"
-Write-Host "  run.bat --help" -ForegroundColor Yellow -NoNewline
-Write-Host " (Command Prompt)"
-Write-Host ""
-
-# Note about execution policy
-Write-Host "Note: If you encounter errors running the PowerShell script, you may need to change the execution policy." -ForegroundColor Yellow
-Write-Host "Run PowerShell as Administrator and execute:" -ForegroundColor Yellow
-Write-Host "  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser" -ForegroundColor White
+Write-Host "For more information, see the README.md file or run:"
+Write-Host "  ${Yellow}scripts\run\run.bat --help${Reset}"
 Write-Host ""
