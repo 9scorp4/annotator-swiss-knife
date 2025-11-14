@@ -61,6 +61,7 @@ class Logger:
         # Configure logger
         self.logger = logging.getLogger("annotation_toolkit")
         self.logger.setLevel(log_level)
+        self.logger.propagate = False  # Prevent propagation to avoid recursion
 
         # Create file handler
         file_handler = logging.FileHandler(self.log_path)
@@ -77,7 +78,9 @@ class Logger:
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
 
-        # Add handlers to logger
+        # Add handlers to logger only if they don't already exist
+        # Clear existing handlers to prevent accumulation
+        self.logger.handlers.clear()
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
 

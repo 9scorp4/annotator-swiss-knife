@@ -10,6 +10,8 @@ import re
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+import time
+from functools import wraps
 
 from ...config import Config
 
@@ -28,17 +30,22 @@ else:
 
 # Add a file handler to save detailed logs
 try:
-    # First try the project logs directory
-    project_logs_dir = Path(
-        "/Users/ariasgarnicolas/Documents/annotator_swiss_knife/logs"
-    )
+    # Use the save directory from configuration or a temp directory
+    import tempfile
+
+    # Try to get logs directory from config, fallback to temp dir
+    logs_dir = config.get("data", "save_directory", default=None)
+    if logs_dir:
+        project_logs_dir = Path(logs_dir) / "logs"
+    else:
+        # Use system temp directory as fallback
+        project_logs_dir = Path(tempfile.gettempdir()) / "annotation_toolkit" / "logs"
+
     if not project_logs_dir.exists():
         project_logs_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Created project logs directory: {project_logs_dir}")
 
-    # Create a file handler for JSON fixing logs in the project directory
+    # Create a file handler for JSON fixing logs
     json_log_file = project_logs_dir / "json_fixer.log"
-    print(f"Setting up log file at: {json_log_file}")
 
     file_handler = logging.FileHandler(json_log_file, mode="a")
 
@@ -67,12 +74,10 @@ try:
     json_fixer_logger.addHandler(console_handler)
 
     json_fixer_logger.info(f"JSON fixer logger initialized (debug={debug_logging})")
-    print(f"JSON fixer logger initialized with log file: {json_log_file}")
 except Exception as e:
-    print(f"Failed to set up JSON fixer logger: {str(e)}")
-    import traceback
-
-    traceback.print_exc()
+    # If logging setup fails, continue without file logging
+    json_fixer_logger.info(f"File logging disabled: {str(e)}")
+    pass
 
 
 class TokenType(Enum):
@@ -105,6 +110,53 @@ class Token:
         return f"Token({self.type}, '{self.value}', {self.position})"
 
 
+def retry_with_backoff(max_retries: int = 3, base_delay: float = 0.1,
+                       max_delay: float = 2.0, exponential_base: float = 2.0):
+    """
+    Decorator for retrying a function with exponential backoff.
+
+    Args:
+        max_retries: Maximum number of retry attempts.
+        base_delay: Initial delay between retries in seconds.
+        max_delay: Maximum delay between retries in seconds.
+        exponential_base: Base for exponential backoff calculation.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+
+                    if attempt < max_retries - 1:
+                        # Calculate delay with exponential backoff
+                        delay = min(base_delay * (exponential_base ** attempt), max_delay)
+
+                        # Log retry attempt
+                        json_fixer_logger.debug(
+                            f"Retry attempt {attempt + 1}/{max_retries} after {delay:.2f}s delay. "
+                            f"Error: {str(e)}"
+                        )
+
+                        time.sleep(delay)
+                    else:
+                        # Last attempt failed
+                        json_fixer_logger.warning(
+                            f"All {max_retries} retry attempts failed. Last error: {str(e)}"
+                        )
+
+            # Re-raise the last exception
+            if last_exception:
+                raise last_exception
+
+        return wrapper
+    return decorator
+
+
 class JsonFixer:
     """
     A general solution for fixing common JSON syntax issues.
@@ -114,12 +166,15 @@ class JsonFixer:
     unescaped special characters.
     """
 
-    def __init__(self, debug: bool = None):
+    def __init__(self, debug: bool = None, max_retries: int = 3,
+                 enable_retry: bool = True):
         """
         Initialize the JsonFixer.
 
         Args:
             debug: Whether to enable debug logging. If None, use the configuration value.
+            max_retries: Maximum number of retry attempts for fixing operations.
+            enable_retry: Whether to enable automatic retry with exponential backoff.
         """
         # Use the provided debug value if specified, otherwise use the configuration
         self.debug = (
@@ -128,6 +183,8 @@ class JsonFixer:
             else config.get("tools", "json_fixer", "debug_logging", default=False)
         )
         self.fixes_applied = []
+        self.max_retries = max_retries
+        self.enable_retry = enable_retry
 
         # Set the logging level based on the debug flag
         if self.debug:
@@ -619,6 +676,18 @@ class JsonFixer:
         Raises:
             json.JSONDecodeError: If the JSON text cannot be fixed and parsed.
         """
+        if self.enable_retry:
+            return self._fix_and_parse_with_retry(text)
+        else:
+            return self._fix_and_parse_internal(text)
+
+    @retry_with_backoff(max_retries=3, base_delay=0.1, max_delay=1.0)
+    def _fix_and_parse_with_retry(self, text: str) -> Any:
+        """Fix and parse with automatic retry on failure."""
+        return self._fix_and_parse_internal(text)
+
+    def _fix_and_parse_internal(self, text: str) -> Any:
+        """Internal implementation of fix_and_parse."""
         if self.debug:
             json_fixer_logger.debug(f"Starting fix_and_parse with text: {text[:50]}...")
 
