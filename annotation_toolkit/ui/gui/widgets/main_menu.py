@@ -230,6 +230,10 @@ class MainMenuWidget(QWidget):
                 "colors": ("#FF9800", "#e68a00"),  # Orange
                 "description": "Clean text from markdown, JSON, and code artifacts for better readability",
             },
+            "Conversation Generator": {
+                "colors": ("#9C27B0", "#7B1FA2"),  # Purple
+                "description": "Generate AI conversation JSON by copy-pasting prompts and responses (max 20 turns)",
+            },
         }
 
         # Add a button for each tool

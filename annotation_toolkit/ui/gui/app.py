@@ -28,9 +28,11 @@ from PyQt5.QtWidgets import (
 
 from ...config import Config
 from ...core.base import AnnotationTool
+from ...core.conversation.generator import ConversationGenerator
 from ...core.conversation.visualizer import JsonVisualizer
 from ...core.text.dict_to_bullet import DictToBulletList
 from ...core.text.text_cleaner import TextCleaner
+from ...core.text.text_collector import TextCollector
 from ...di import ConfigInterface, DIContainer, LoggerInterface
 from ...di.bootstrap import (
     bootstrap_application,
@@ -38,10 +40,13 @@ from ...di.bootstrap import (
     validate_container_configuration,
 )
 from ...utils import logger
+from .widgets.conversation_generator_widget import ConversationGeneratorWidget
 from .widgets.dict_widget import DictToBulletWidget
 from .widgets.json_widget import JsonVisualizerWidget
 from .widgets.main_menu import MainMenuWidget
 from .widgets.text_cleaner_widget import TextCleanerWidget
+from .widgets.text_collector_widget import TextCollectorWidget
+from .sidebar import CollapsibleSidebar
 
 
 class AnnotationToolkitApp(QMainWindow):
@@ -155,13 +160,13 @@ class AnnotationToolkitApp(QMainWindow):
                 "tools",
                 "conversation_visualizer",
                 "user_message_color",
-                default="#0d47a1",
+                default="#00FFFF",
             )
             ai_message_color = self.config.get(
                 "tools",
                 "conversation_visualizer",
                 "ai_message_color",
-                default="#33691e",
+                default="#00FF7F",
             )
             logger.debug(
                 f"Using colors - user: {user_message_color}, AI: {ai_message_color}"
@@ -183,6 +188,20 @@ class AnnotationToolkitApp(QMainWindow):
             text_cleaner_tool = TextCleaner()
             self.tools[text_cleaner_tool.name] = text_cleaner_tool
             logger.info(f"Initialized tool: {text_cleaner_tool.name}")
+
+        # Initialize Conversation Generator tool
+        conv_gen_enabled = self.config.get(
+            "tools", "conversation_generator", "enabled", default=True
+        )
+        logger.debug(f"Conversation Generator tool enabled: {conv_gen_enabled}")
+
+        if conv_gen_enabled:
+            max_turns = self.config.get(
+                "tools", "conversation_generator", "max_turns", default=20
+            )
+            conv_gen_tool = ConversationGenerator(max_turns=max_turns)
+            self.tools[conv_gen_tool.name] = conv_gen_tool
+            logger.info(f"Initialized tool: {conv_gen_tool.name}")
 
         logger.info(f"Initialized {len(self.tools)} tools (fallback mode)")
 
@@ -208,39 +227,41 @@ class AnnotationToolkitApp(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Main layout with some padding
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(15, 15, 15, 15)
-        main_layout.setSpacing(10)
+        # Main layout - horizontal to accommodate sidebar
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Create header with navigation
+        # Create sidebar
+        self.sidebar = CollapsibleSidebar(self.tools, self)
+        self.sidebar.tool_selected.connect(self._on_sidebar_tool_selected)
+        main_layout.addWidget(self.sidebar)
+
+        # Right side: header and content
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(15, 15, 15, 15)
+        right_layout.setSpacing(12)
+
+        # Simplified header with just the title
         header_frame = QFrame()
         header_frame.setFrameShape(QFrame.StyledPanel)
         header_frame.setObjectName("headerFrame")
-        header_frame.setMinimumHeight(60)  # Taller header for better visual presence
+        header_frame.setFixedHeight(50)  # Compact header
 
-        # Add shadow effect to header
+        # Add subtle shadow to header
         header_shadow = QGraphicsDropShadowEffect()
-        header_shadow.setBlurRadius(15)
+        header_shadow.setBlurRadius(10)
         header_shadow.setXOffset(0)
         header_shadow.setYOffset(2)
-        header_shadow.setColor(QColor(0, 0, 0, 50))
+        header_shadow.setColor(QColor(0, 0, 0, 30))
         header_frame.setGraphicsEffect(header_shadow)
 
-        # Header layout with better spacing
+        # Header layout
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(15, 5, 15, 5)
+        header_layout.setContentsMargins(20, 8, 20, 8)
 
-        # Home button with icon
-        self.home_button = QPushButton(" Home")
-        self.home_button.setIcon(QIcon.fromTheme("go-home", QIcon.fromTheme("home")))
-        self.home_button.setIconSize(QSize(18, 18))
-        self.home_button.clicked.connect(self._go_to_home)
-        self.home_button.setCursor(Qt.PointingHandCursor)  # Change cursor on hover
-        self.home_button.setObjectName("homeButton")  # For specific styling
-        header_layout.addWidget(self.home_button)
-
-        # Title with custom font
+        # Title
         title_font_size = self.config.get("ui", "font_size", default=14) + 2
         header_title = QLabel("Annotation Swiss Knife")
         header_title.setFont(
@@ -250,12 +271,7 @@ class AnnotationToolkitApp(QMainWindow):
         header_title.setObjectName("headerTitle")
         header_layout.addWidget(header_title)
 
-        # Empty widget for symmetry
-        spacer = QWidget()
-        spacer.setMinimumWidth(self.home_button.sizeHint().width())
-        header_layout.addWidget(spacer)
-
-        main_layout.addWidget(header_frame)
+        right_layout.addWidget(header_frame)
 
         # Content container with rounded corners and shadow
         content_container = QFrame()
@@ -300,8 +316,25 @@ class AnnotationToolkitApp(QMainWindow):
             self.text_cleaner_widget = TextCleanerWidget(self.tools["Text Cleaner"])
             self.stacked_widget.addWidget(self.text_cleaner_widget)
 
+        # Add Conversation Generator tool widget
+        if "Conversation Generator" in self.tools:
+            self.conv_gen_widget = ConversationGeneratorWidget(
+                self.tools["Conversation Generator"]
+            )
+            self.stacked_widget.addWidget(self.conv_gen_widget)
+
+        # Add Text Collector tool widget
+        if "Text Collector" in self.tools:
+            self.text_collector_widget = TextCollectorWidget(
+                self.tools["Text Collector"]
+            )
+            self.stacked_widget.addWidget(self.text_collector_widget)
+
         content_layout.addWidget(self.stacked_widget)
-        main_layout.addWidget(content_container, 1)  # Give it stretch factor
+        right_layout.addWidget(content_container, 1)  # Give it stretch factor
+
+        # Add right widget to main layout
+        main_layout.addWidget(right_widget, 1)  # Content takes remaining space
 
         # Status bar with modern styling
         self.status_bar = QStatusBar()
@@ -311,6 +344,7 @@ class AnnotationToolkitApp(QMainWindow):
 
         # Start with the main menu
         self.stacked_widget.setCurrentIndex(0)
+        self.sidebar.set_active_tool("Home")
 
         # Set up theme support - do this after all UI elements are created
         self._setup_theme()
@@ -360,13 +394,30 @@ class AnnotationToolkitApp(QMainWindow):
             logger.warning(f"Error loading custom fonts: {str(e)}")
             self.selected_font_family = "Arial"
 
+    def _on_sidebar_tool_selected(self, tool_name: str):
+        """
+        Handle tool selection from sidebar.
+
+        Args:
+            tool_name: Name of the selected tool or "Home"
+        """
+        logger.info(f"Sidebar: Selected {tool_name}")
+
+        if tool_name == "Home":
+            self.stacked_widget.setCurrentIndex(0)
+            self.status_bar.showMessage("Main Menu")
+        else:
+            self.switch_to_tool(tool_name)
+
     def _go_to_home(self) -> None:
         """
         Switch to the main menu with a smooth transition.
         """
         logger.info("Navigating to home/main menu")
 
-        # Create a fade transition effect
+        # Update sidebar
+        self.sidebar.set_active_tool("Home")
+        # Switch to main menu
         self.stacked_widget.setCurrentIndex(0)
         self.status_bar.showMessage("Main Menu")
 
@@ -393,6 +444,12 @@ class AnnotationToolkitApp(QMainWindow):
         elif tool_name == "Text Cleaner":
             target_widget = self.text_cleaner_widget
             logger.debug(f"Switching to Text Cleaner tool")
+        elif tool_name == "Conversation Generator":
+            target_widget = self.conv_gen_widget
+            logger.debug(f"Switching to Conversation Generator tool")
+        elif tool_name == "Text Collector":
+            target_widget = self.text_collector_widget
+            logger.debug(f"Switching to Text Collector tool")
         else:
             logger.error(f"Unknown tool: {tool_name}")
             raise ValueError(f"Unknown tool: {tool_name}")
@@ -401,6 +458,8 @@ class AnnotationToolkitApp(QMainWindow):
             # Set the current widget
             self.stacked_widget.setCurrentWidget(target_widget)
             self.status_bar.showMessage(f"Using {tool_name}")
+            # Update sidebar active state
+            self.sidebar.set_active_tool(tool_name)
 
     def _setup_theme(self) -> None:
         """
@@ -426,62 +485,62 @@ class AnnotationToolkitApp(QMainWindow):
             """
             QMainWindow, QWidget {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #1a1a1a, stop: 1 #0f0f0f);
-                color: #e8e8e8;
+                    stop: 0 #2a2a2a, stop: 1 #1f1f1f);
+                color: #00FFFF;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             }
             QFrame {
-                background-color: rgba(45, 45, 45, 0.95);
-                border: 1px solid rgba(68, 68, 68, 0.6);
+                background-color: rgba(65, 65, 65, 0.95);
+                border: 1px solid rgba(88, 88, 88, 0.8);
                 border-radius: 12px;
             }
             #headerFrame {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(40, 40, 40, 0.98), stop: 1 rgba(30, 30, 30, 0.98));
+                    stop: 0 rgba(60, 60, 60, 0.98), stop: 1 rgba(50, 50, 50, 0.98));
                 border: none;
                 border-radius: 15px;
                 padding: 5px;
             }
             #contentContainer {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(45, 45, 45, 0.98), stop: 1 rgba(35, 35, 35, 0.98));
-                border: 1px solid rgba(68, 68, 68, 0.4);
+                    stop: 0 rgba(65, 65, 65, 0.98), stop: 1 rgba(55, 55, 55, 0.98));
+                border: 1px solid rgba(88, 88, 88, 0.6);
                 border-radius: 15px;
             }
             #headerTitle, #mainTitle {
-                color: #ffffff;
+                color: #00FFFF;
                 font-weight: 600;
             }
             #mainDescription, #footerLabel, #statusLabel {
-                color: #b8b8b8;
+                color: #FF69B4;
                 font-weight: 400;
             }
             #sectionTitle, #fieldLabel {
-                color: #ffffff;
+                color: #00FF7F;
                 font-weight: 600;
             }
             #searchFrame {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(50, 50, 50, 0.9), stop: 1 rgba(40, 40, 40, 0.9));
+                    stop: 0 rgba(70, 70, 70, 0.9), stop: 1 rgba(60, 60, 60, 0.9));
                 border-radius: 8px;
-                border: 1px solid rgba(68, 68, 68, 0.5);
+                border: 1px solid rgba(88, 88, 88, 0.7);
                 padding: 2px;
             }
             #searchInput {
                 border: none;
                 padding: 8px 12px;
                 background-color: transparent;
-                color: #ffffff;
+                color: #00FFFF;
                 font-size: 13px;
                 border-radius: 6px;
             }
             #searchInput:focus {
-                background-color: rgba(255, 255, 255, 0.05);
-                outline: 2px solid rgba(33, 150, 243, 0.5);
+                background-color: rgba(255, 255, 255, 0.1);
+                outline: 2px solid rgba(66, 165, 245, 0.8);
             }
             #searchButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
+                    stop: 0 #42A5F5, stop: 1 #2196F3);
                 color: #ffffff;
                 border-radius: 6px;
                 padding: 8px 16px;
@@ -490,19 +549,19 @@ class AnnotationToolkitApp(QMainWindow):
             }
             #searchButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #1E88E5);
+                    stop: 0 #64B5F6, stop: 1 #42A5F5);
             }
             #searchButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #1976D2, stop: 1 #0D47A1);
+                    stop: 0 #2196F3, stop: 1 #1976D2);
             }
             #separator {
-                background-color: rgba(68, 68, 68, 0.6);
+                background-color: rgba(88, 88, 88, 0.8);
                 border-radius: 1px;
             }
             QPushButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
+                    stop: 0 #42A5F5, stop: 1 #2196F3);
                 color: #ffffff;
                 border: none;
                 border-radius: 8px;
@@ -513,19 +572,19 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QPushButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #1E88E5);
+                    stop: 0 #64B5F6, stop: 1 #42A5F5);
             }
             QPushButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #1976D2, stop: 1 #0D47A1);
+                    stop: 0 #2196F3, stop: 1 #1976D2);
             }
             QPushButton:focus {
-                outline: 2px solid rgba(33, 150, 243, 0.5);
+                outline: 2px solid rgba(66, 165, 245, 0.8);
                 outline-offset: 2px;
             }
             #homeButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(66, 66, 66, 0.9), stop: 1 rgba(48, 48, 48, 0.9));
+                    stop: 0 rgba(86, 86, 86, 0.9), stop: 1 rgba(68, 68, 68, 0.9));
                 color: #ffffff;
                 border: none;
                 font-weight: 600;
@@ -534,38 +593,38 @@ class AnnotationToolkitApp(QMainWindow):
             }
             #homeButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(97, 97, 97, 0.9), stop: 1 rgba(66, 66, 66, 0.9));
+                    stop: 0 rgba(117, 117, 117, 0.9), stop: 1 rgba(86, 86, 86, 0.9));
             }
             #homeButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(33, 33, 33, 0.9), stop: 1 rgba(24, 24, 24, 0.9));
+                    stop: 0 rgba(53, 53, 53, 0.9), stop: 1 rgba(44, 44, 44, 0.9));
             }
             QLabel {
-                color: #e8e8e8;
+                color: #FFFFFF;
                 border: none;
             }
             QStatusBar {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(37, 37, 37, 0.95), stop: 1 rgba(25, 25, 25, 0.95));
-                color: #b8b8b8;
-                border-top: 1px solid rgba(68, 68, 68, 0.3);
+                    stop: 0 rgba(57, 57, 57, 0.95), stop: 1 rgba(45, 45, 45, 0.95));
+                color: #00FFFF;
+                border-top: 1px solid rgba(88, 88, 88, 0.5);
                 padding: 5px;
             }
             QSplitter::handle {
                 background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(68, 68, 68, 0.6), stop: 0.5 rgba(100, 100, 100, 0.8), stop: 1 rgba(68, 68, 68, 0.6));
+                    stop: 0 rgba(88, 88, 88, 0.8), stop: 0.5 rgba(120, 120, 120, 0.9), stop: 1 rgba(88, 88, 88, 0.8));
                 border-radius: 4px;
                 margin: 2px;
             }
             QSplitter::handle:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(33, 150, 243, 0.6), stop: 0.5 rgba(33, 150, 243, 0.9), stop: 1 rgba(33, 150, 243, 0.6));
+                    stop: 0 rgba(66, 165, 245, 0.7), stop: 0.5 rgba(66, 165, 245, 0.9), stop: 1 rgba(66, 165, 245, 0.7));
             }
             QPlainTextEdit, QTextEdit {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(30, 30, 30, 0.95), stop: 1 rgba(20, 20, 20, 0.95));
-                color: #e8e8e8;
-                border: 1px solid rgba(68, 68, 68, 0.5);
+                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
+                color: #00FFFF;
+                border: 1px solid rgba(88, 88, 88, 0.7);
                 border-radius: 8px;
                 padding: 12px;
                 selection-background-color: rgba(33, 150, 243, 0.3);
@@ -574,15 +633,15 @@ class AnnotationToolkitApp(QMainWindow):
                 line-height: 1.4;
             }
             QPlainTextEdit:focus, QTextEdit:focus {
-                border: 2px solid rgba(33, 150, 243, 0.6);
+                border: 2px solid rgba(66, 165, 245, 0.8);
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(35, 35, 35, 0.95), stop: 1 rgba(25, 25, 25, 0.95));
+                    stop: 0 rgba(55, 55, 55, 0.95), stop: 1 rgba(45, 45, 45, 0.95));
             }
             QListWidget {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(30, 30, 30, 0.95), stop: 1 rgba(20, 20, 20, 0.95));
-                color: #e8e8e8;
-                border: 1px solid rgba(68, 68, 68, 0.5);
+                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
+                color: #00FF7F;
+                border: 1px solid rgba(88, 88, 88, 0.7);
                 border-radius: 8px;
                 padding: 5px;
                 outline: none;
@@ -594,7 +653,7 @@ class AnnotationToolkitApp(QMainWindow):
                 border: none;
             }
             QListWidget::item:hover {
-                background-color: rgba(61, 61, 61, 0.7);
+                background-color: rgba(81, 81, 81, 0.8);
                 color: #ffffff;
             }
             QListWidget::item:selected {
@@ -604,9 +663,9 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QComboBox {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(30, 30, 30, 0.95), stop: 1 rgba(20, 20, 20, 0.95));
-                color: #e8e8e8;
-                border: 1px solid rgba(68, 68, 68, 0.5);
+                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
+                color: #FF69B4;
+                border: 1px solid rgba(88, 88, 88, 0.7);
                 border-radius: 6px;
                 padding: 8px 18px 8px 12px;
                 min-width: 6em;
@@ -614,22 +673,22 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QComboBox:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(61, 61, 61, 0.95), stop: 1 rgba(45, 45, 45, 0.95));
-                border: 1px solid rgba(100, 100, 100, 0.7);
+                    stop: 0 rgba(81, 81, 81, 0.95), stop: 1 rgba(65, 65, 65, 0.95));
+                border: 1px solid rgba(120, 120, 120, 0.8);
             }
             QComboBox:focus {
-                border: 2px solid rgba(33, 150, 243, 0.6);
+                border: 2px solid rgba(66, 165, 245, 0.8);
             }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 20px;
-                border-left: 1px solid rgba(68, 68, 68, 0.5);
+                border-left: 1px solid rgba(88, 88, 88, 0.7);
                 border-radius: 0px 6px 6px 0px;
             }
             QComboBox::down-arrow {
                 image: none;
-                border: 2px solid #e8e8e8;
+                border: 2px solid #f5f5f5;
                 border-top: none;
                 border-right: none;
                 width: 6px;
@@ -637,31 +696,31 @@ class AnnotationToolkitApp(QMainWindow):
                 margin-top: -3px;
             }
             QCheckBox {
-                color: #e8e8e8;
+                color: #FFFF00;
                 font-size: 13px;
                 spacing: 8px;
             }
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
-                border: 2px solid rgba(68, 68, 68, 0.7);
+                border: 2px solid rgba(88, 88, 88, 0.8);
                 border-radius: 4px;
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(30, 30, 30, 0.95), stop: 1 rgba(20, 20, 20, 0.95));
+                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
             }
             QCheckBox::indicator:hover {
-                border: 2px solid rgba(100, 100, 100, 0.8);
+                border: 2px solid rgba(120, 120, 120, 0.9);
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(45, 45, 45, 0.95), stop: 1 rgba(35, 35, 35, 0.95));
+                    stop: 0 rgba(65, 65, 65, 0.95), stop: 1 rgba(55, 55, 55, 0.95));
             }
             QCheckBox::indicator:checked {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
-                border: 2px solid #1976D2;
+                    stop: 0 #42A5F5, stop: 1 #2196F3);
+                border: 2px solid #2196F3;
             }
             QCheckBox::indicator:checked:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #1E88E5);
+                    stop: 0 #64B5F6, stop: 1 #42A5F5);
             }
         """
         )
@@ -698,15 +757,15 @@ class AnnotationToolkitApp(QMainWindow):
                 border-radius: 15px;
             }
             #headerTitle, #mainTitle {
-                color: #1a1a1a;
-                font-weight: 600;
+                color: #000000;  /* Pure black for maximum contrast */
+                font-weight: 700;  /* Bolder font weight */
             }
             #mainDescription, #footerLabel, #statusLabel {
-                color: #666666;
+                color: #333333;  /* Darker for better readability */
                 font-weight: 400;
             }
             #sectionTitle, #fieldLabel {
-                color: #1a1a1a;
+                color: #000000;  /* Pure black for maximum contrast */
                 font-weight: 600;
             }
             #searchFrame {
@@ -730,7 +789,7 @@ class AnnotationToolkitApp(QMainWindow):
             }
             #searchButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
+                    stop: 0 #42A5F5, stop: 1 #2196F3);
                 color: #ffffff;
                 border-radius: 6px;
                 padding: 8px 16px;
@@ -739,11 +798,11 @@ class AnnotationToolkitApp(QMainWindow):
             }
             #searchButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #1E88E5);
+                    stop: 0 #64B5F6, stop: 1 #42A5F5);
             }
             #searchButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #1976D2, stop: 1 #0D47A1);
+                    stop: 0 #2196F3, stop: 1 #1976D2);
             }
             #separator {
                 background-color: rgba(204, 204, 204, 0.6);
@@ -751,7 +810,7 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QPushButton {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
+                    stop: 0 #42A5F5, stop: 1 #2196F3);
                 color: #ffffff;
                 border: none;
                 border-radius: 8px;
@@ -762,14 +821,14 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QPushButton:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #1E88E5);
+                    stop: 0 #64B5F6, stop: 1 #42A5F5);
             }
             QPushButton:pressed {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #1976D2, stop: 1 #0D47A1);
+                    stop: 0 #2196F3, stop: 1 #1976D2);
             }
             QPushButton:focus {
-                outline: 2px solid rgba(33, 150, 243, 0.5);
+                outline: 2px solid rgba(66, 165, 245, 0.8);
                 outline-offset: 2px;
             }
             #homeButton {
@@ -808,7 +867,7 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QSplitter::handle:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(33, 150, 243, 0.6), stop: 0.5 rgba(33, 150, 243, 0.9), stop: 1 rgba(33, 150, 243, 0.6));
+                    stop: 0 rgba(66, 165, 245, 0.7), stop: 0.5 rgba(66, 165, 245, 0.9), stop: 1 rgba(66, 165, 245, 0.7));
             }
             QPlainTextEdit, QTextEdit {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -867,7 +926,7 @@ class AnnotationToolkitApp(QMainWindow):
                 border: 1px solid rgba(189, 189, 189, 0.7);
             }
             QComboBox:focus {
-                border: 2px solid rgba(33, 150, 243, 0.6);
+                border: 2px solid rgba(66, 165, 245, 0.8);
             }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
@@ -905,12 +964,12 @@ class AnnotationToolkitApp(QMainWindow):
             }
             QCheckBox::indicator:checked {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
-                border: 2px solid #1976D2;
+                    stop: 0 #42A5F5, stop: 1 #2196F3);
+                border: 2px solid #2196F3;
             }
             QCheckBox::indicator:checked:hover {
                 background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #1E88E5);
+                    stop: 0 #64B5F6, stop: 1 #42A5F5);
             }
         """
         )

@@ -561,10 +561,10 @@ OR any valid JSON data:
                         body {{ font-family: Arial, sans-serif; }}
                         pre {{ background-color: #f5f5f5; padding: 10px; border-radius: 5px; }}
                         code {{ font-family: 'Courier New', monospace; }}
-                        .key {{ color: #0d47a1; font-weight: bold; }}
-                        .string {{ color: #2e7d32; }}
-                        .number {{ color: #d32f2f; }}
-                        .boolean {{ color: #0277bd; }}
+                        .key {{ color: #00FFFF; font-weight: bold; }}
+                        .string {{ color: #00FF7F; }}
+                        .number {{ color: #FF69B4; }}
+                        .boolean {{ color: #FFFF00; }}
                         .null {{ color: #757575; }}
                     </style>
                 </head>
@@ -602,8 +602,8 @@ OR any valid JSON data:
             formatted (str): The formatted conversation text.
         """
         # Get the color values from the tool
-        user_color = self.tool.user_message_color or "#0d47a1"
-        ai_color = self.tool.ai_message_color or "#33691e"
+        user_color = self.tool.user_message_color or "#00FFFF"
+        ai_color = self.tool.ai_message_color or "#00FF7F"
 
         # Split the text into lines
         lines = formatted.split("\n")

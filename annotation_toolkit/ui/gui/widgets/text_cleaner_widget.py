@@ -32,6 +32,14 @@ from ....core.base import ToolExecutionError
 from ....core.text.text_cleaner import TextCleaner
 from ....utils import logger
 from .custom_widgets import PlainTextEdit
+from ..theme import (
+    ColorPalette,
+    Spacing,
+    BorderRadius,
+    get_success_button_style,
+    get_primary_button_style,
+    get_warning_button_style,
+)
 
 
 class TextCleanerWidget(QWidget):
