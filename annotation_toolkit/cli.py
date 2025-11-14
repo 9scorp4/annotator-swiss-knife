@@ -16,9 +16,11 @@ from .core.text.dict_to_bullet import DictToBulletList
 from .di import get_container, resolve, DIContainer, ConfigInterface
 from .di.bootstrap import bootstrap_application, validate_container_configuration
 from .ui.cli.commands import (
+    run_conversation_generator_command,
     run_dict_to_bullet_command,
     run_json_visualizer_command,
     run_text_cleaner_command,
+    run_text_collector_command,
 )
 from .utils import logger
 from .utils.error_handler import (
@@ -119,6 +121,44 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output format (default: markdown)",
     )
 
+    # Conversation Generator command
+    convgen_parser = subparsers.add_parser(
+        "convgen", help="Generate AI conversation JSON from turn pairs"
+    )
+    convgen_parser.add_argument(
+        "input_file",
+        help='Path to input JSON file with format: {"turns": [{"user": "...", "assistant": "..."}, ...]}'
+    )
+    convgen_parser.add_argument(
+        "--output", "-o", help="Path to save the output JSON file (default: print to stdout)"
+    )
+    convgen_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["pretty", "compact"],
+        default="pretty",
+        help="JSON output format (default: pretty)",
+    )
+
+    # Text Collector command
+    textcollect_parser = subparsers.add_parser(
+        "textcollect", help="Collect text from multiple fields into a JSON list"
+    )
+    textcollect_parser.add_argument(
+        "input_file",
+        help="Path to input text file (one text item per line)"
+    )
+    textcollect_parser.add_argument(
+        "--output", "-o", help="Path to save the output JSON file (default: print to stdout)"
+    )
+    textcollect_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["pretty", "compact"],
+        default="pretty",
+        help="JSON output format (default: pretty)",
+    )
+
     # GUI command
     gui_parser = subparsers.add_parser(
         "gui", help="Launch the graphical user interface"
@@ -161,6 +201,16 @@ def execute_command(parsed_args: argparse.Namespace, config: Config) -> int:
             f"Running textclean command with input file: {parsed_args.input_file}"
         )
         return run_text_cleaner_command(parsed_args, config)
+    elif parsed_args.command == "convgen":
+        logger.info(
+            f"Running convgen command with input file: {parsed_args.input_file}"
+        )
+        return run_conversation_generator_command(parsed_args, config)
+    elif parsed_args.command == "textcollect":
+        logger.info(
+            f"Running textcollect command with input file: {parsed_args.input_file}"
+        )
+        return run_text_collector_command(parsed_args, config)
     elif parsed_args.command == "gui":
         logger.info("Launching GUI application")
         # Import here to avoid circular imports
@@ -173,7 +223,7 @@ def execute_command(parsed_args: argparse.Namespace, config: Config) -> int:
         raise ProcessingError(
             f"Unknown command: {parsed_args.command}",
             error_code=ErrorCode.INVALID_INPUT,
-            suggestion="Use one of the available commands: dict2bullet, jsonvis, textclean, or gui.",
+            suggestion="Use one of the available commands: dict2bullet, jsonvis, textclean, convgen, textcollect, or gui.",
         )
 
 

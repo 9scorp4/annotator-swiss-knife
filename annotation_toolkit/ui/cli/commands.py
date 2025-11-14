@@ -12,9 +12,11 @@ from typing import Dict, List, Optional, Union
 
 from ...config import Config
 from ...core.base import ToolExecutionError
+from ...core.conversation.generator import ConversationGenerator
 from ...core.conversation.visualizer import JsonVisualizer
 from ...core.text.dict_to_bullet import DictToBulletList
 from ...core.text.text_cleaner import TextCleaner
+from ...core.text.text_collector import TextCollector
 from ...di import DIContainer
 from ...di.bootstrap import bootstrap_application, get_tool_instances, validate_container_configuration
 from ...utils import logger
@@ -312,3 +314,211 @@ def run_text_cleaner_command(args: argparse.Namespace, config: Config) -> int:
         logger.exception(f"Unexpected error in text_cleaner command: {str(e)}")
         print(f"Unexpected error: {str(e)}", file=sys.stderr)
         return 1
+
+
+def run_conversation_generator_command(args: argparse.Namespace, config: Config) -> int:
+    """
+    Run the Conversation Generator command.
+
+    Args:
+        args (argparse.Namespace): Command-line arguments.
+        config (Config): The configuration.
+
+    Returns:
+        int: Exit code.
+    """
+    logger.info("Running Conversation Generator command")
+    logger.debug(f"Command arguments: {args}")
+
+    try:
+        # Bootstrap DI container and get the tool
+        logger.debug("Bootstrapping DI container for command")
+        container = bootstrap_application(config)
+
+        if not validate_container_configuration(container):
+            logger.error("DI container validation failed")
+            print("Error: Failed to initialize application services", file=sys.stderr)
+            return 1
+
+        # Get the tool from the container
+        logger.debug("Resolving ConversationGenerator tool from DI container")
+        tool = container.resolve(ConversationGenerator)
+
+        # Load input data
+        input_path = Path(args.input_file)
+        logger.info(f"Loading input data from: {input_path}")
+
+        if not input_path.exists():
+            logger.error(f"Input file not found: {input_path}")
+            print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+            return 1
+
+        try:
+            logger.debug(f"Parsing JSON from: {input_path}")
+            input_data = load_json(input_path)
+            logger.debug(f"Successfully loaded JSON data")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON file: {str(e)}")
+            print(f"Error: Invalid JSON file: {e}", file=sys.stderr)
+            return 1
+
+        # Expected format: {"turns": [{"user": "...", "assistant": "..."}, ...]}
+        if not isinstance(input_data, dict) or "turns" not in input_data:
+            logger.error(f"Invalid input format. Expected {{'turns': [...]}} structure")
+            print("Error: Input must be a JSON object with 'turns' array", file=sys.stderr)
+            print("\nExpected format:", file=sys.stderr)
+            print('{"turns": [{"user": "prompt1", "assistant": "response1"}, ...]}', file=sys.stderr)
+            return 1
+
+        turns = input_data["turns"]
+        if not isinstance(turns, list):
+            logger.error(f"'turns' must be an array")
+            print("Error: 'turns' must be an array", file=sys.stderr)
+            return 1
+
+        # Add each turn to the conversation
+        logger.info(f"Processing {len(turns)} turns")
+        for i, turn in enumerate(turns):
+            if not isinstance(turn, dict):
+                logger.error(f"Turn {i + 1} is not a dictionary")
+                print(f"Error: Turn {i + 1} must be a dictionary", file=sys.stderr)
+                return 1
+
+            if "user" not in turn or "assistant" not in turn:
+                logger.error(f"Turn {i + 1} missing 'user' or 'assistant' field")
+                print(f"Error: Turn {i + 1} must have 'user' and 'assistant' fields", file=sys.stderr)
+                return 1
+
+            user_message = turn["user"]
+            assistant_message = turn["assistant"]
+
+            try:
+                success = tool.add_turn(user_message, assistant_message)
+                if not success:
+                    logger.error(f"Failed to add turn {i + 1}: maximum turns reached")
+                    print(f"Error: Maximum of {tool.max_turns} turns reached at turn {i + 1}", file=sys.stderr)
+                    return 1
+                logger.debug(f"Added turn {i + 1} successfully")
+            except Exception as e:
+                logger.error(f"Error adding turn {i + 1}: {str(e)}")
+                print(f"Error adding turn {i + 1}: {str(e)}", file=sys.stderr)
+                return 1
+
+        # Generate the JSON output
+        pretty = args.format == "pretty"
+        logger.info(f"Generating conversation JSON (pretty={pretty})")
+        output = tool.generate_json(pretty=pretty)
+        logger.debug(f"Generated JSON with {len(output)} characters")
+
+        # Output the result
+        if args.output:
+            output_path = Path(args.output)
+            logger.info(f"Saving output to: {output_path}")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(output)
+            logger.info(f"Output saved successfully to: {output_path}")
+            print(f"Conversation JSON saved to: {output_path}")
+            print(f"Generated {tool.get_turn_count()} turns with {len(output)} characters")
+        else:
+            logger.info("Printing output to console")
+            print(output)
+
+        logger.info("Conversation Generator command completed successfully")
+        return 0
+
+    except ToolExecutionError as e:
+        logger.error(f"Tool execution error: {str(e)}")
+        print(f"Error: {str(e)}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        logger.exception(f"Unexpected error in conversation_generator command: {str(e)}")
+        print(f"Unexpected error: {str(e)}", file=sys.stderr)
+        return 1
+
+
+def run_text_collector_command(args: argparse.Namespace, config: Config) -> int:
+    """
+    Run the Text Collector command.
+
+    Args:
+        args (argparse.Namespace): Command-line arguments.
+        config (Config): The configuration.
+
+    Returns:
+        int: Exit code.
+    """
+    logger.info("Running Text Collector command")
+    logger.debug(f"Command arguments: {args}")
+
+    try:
+        # Bootstrap DI container and get the tool
+        logger.debug("Bootstrapping DI container for command")
+        container = bootstrap_application(config)
+
+        if not validate_container_configuration(container):
+            logger.error("DI container validation failed")
+            print("Error: Failed to initialize application services", file=sys.stderr)
+            return 1
+
+        # Get the tool from the container
+        logger.debug("Resolving TextCollector tool from DI container")
+        tool = container.resolve(TextCollector)
+
+        # Load input data
+        input_path = Path(args.input_file)
+        logger.info(f"Loading input data from: {input_path}")
+
+        if not input_path.exists():
+            logger.error(f"Input file not found: {input_path}")
+            print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+            return 1
+
+        # Read text file line by line
+        try:
+            logger.debug(f"Reading text file: {input_path}")
+            with open(input_path, "r", encoding="utf-8") as f:
+                lines = [line.rstrip('\n\r') for line in f]
+            logger.debug(f"Read {len(lines)} lines from file")
+        except Exception as e:
+            logger.error(f"Error reading file: {str(e)}")
+            print(f"Error reading file: {str(e)}", file=sys.stderr)
+            return 1
+
+        # Process through the tool (which filters empty lines)
+        logger.info(f"Processing {len(lines)} lines through TextCollector")
+        collected_items = tool.process_json(lines)
+        logger.debug(f"Collected {len(collected_items)} non-empty items")
+
+        # Convert to JSON string
+        pretty = args.format == "pretty"
+        logger.info(f"Generating JSON output (pretty={pretty})")
+        output = tool.to_json_string(collected_items, pretty=pretty)
+        logger.debug(f"Generated JSON with {len(output)} characters")
+
+        # Output the result
+        if args.output:
+            output_path = Path(args.output)
+            logger.info(f"Saving output to: {output_path}")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(output)
+            logger.info(f"Output saved successfully to: {output_path}")
+            print(f"Text collection saved to: {output_path}")
+            print(f"Collected {len(collected_items)} items from {len(lines)} lines")
+        else:
+            logger.info("Printing output to console")
+            print(output)
+
+        logger.info("Text Collector command completed successfully")
+        return 0
+
+    except ToolExecutionError as e:
+        logger.error(f"Tool execution error: {str(e)}")
+        print(f"Error: {str(e)}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        logger.exception(f"Unexpected error in text_collector command: {str(e)}")
+        print(f"Unexpected error: {str(e)}", file=sys.stderr)
+        return 1
+
