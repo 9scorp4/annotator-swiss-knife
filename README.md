@@ -721,7 +721,9 @@ For more details, see the [Error Handling documentation](annotation_toolkit/util
 
 ## License
 
-WIP
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2025 Nicolas Arias Garcia
 
 ## Contributing
 
