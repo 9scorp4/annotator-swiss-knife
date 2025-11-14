@@ -8,15 +8,83 @@ including conversation data and other JSON structures.
 import json
 import re
 from typing import Any, Dict, List, Optional, Tuple, Union
+from functools import lru_cache
+import hashlib
+import time
+from collections import OrderedDict
 
 from ...core.base import JsonAnnotationTool, ToolExecutionError
 from ...utils import logger
+from ...utils.streaming import StreamingJSONParser
+from ...utils.security import default_file_size_validator
 from ...utils.json.formatter import (
     format_conversation_as_markdown,
     format_conversation_as_text,
     prettify_json,
 )
 from ...utils.json.parser import parse_conversation_data
+from ...utils.xml.formatter import XmlFormatter
+
+
+class TTLCache:
+    """LRU cache with time-to-live expiration."""
+
+    def __init__(self, max_size: int = 128, ttl_seconds: int = 300):
+        """
+        Initialize TTL cache.
+
+        Args:
+            max_size: Maximum number of items in cache.
+            ttl_seconds: Time-to-live in seconds for cached items.
+        """
+        self.max_size = max_size
+        self.ttl_seconds = ttl_seconds
+        self.cache = OrderedDict()
+        self.timestamps = {}
+
+    def get(self, key: str) -> Optional[Any]:
+        """Get item from cache if valid."""
+        if key not in self.cache:
+            return None
+
+        # Check if item has expired
+        if time.time() - self.timestamps[key] > self.ttl_seconds:
+            # Remove expired item
+            del self.cache[key]
+            del self.timestamps[key]
+            return None
+
+        # Move to end (most recently used)
+        self.cache.move_to_end(key)
+        return self.cache[key]
+
+    def put(self, key: str, value: Any) -> None:
+        """Add item to cache."""
+        # Remove oldest items if cache is full
+        while len(self.cache) >= self.max_size:
+            oldest_key = next(iter(self.cache))
+            del self.cache[oldest_key]
+            del self.timestamps[oldest_key]
+
+        # Add new item
+        self.cache[key] = value
+        self.timestamps[key] = time.time()
+
+    def clear(self) -> None:
+        """Clear all cached items."""
+        self.cache.clear()
+        self.timestamps.clear()
+
+    def cleanup_expired(self) -> None:
+        """Remove all expired items from cache."""
+        current_time = time.time()
+        expired_keys = [
+            key for key, timestamp in self.timestamps.items()
+            if current_time - timestamp > self.ttl_seconds
+        ]
+        for key in expired_keys:
+            del self.cache[key]
+            del self.timestamps[key]
 
 
 class JsonVisualizer(JsonAnnotationTool):
@@ -29,6 +97,9 @@ class JsonVisualizer(JsonAnnotationTool):
         output_format: str = "text",
         user_message_color: Optional[str] = None,
         ai_message_color: Optional[str] = None,
+        max_cache_size: int = 128,
+        cache_ttl_seconds: int = 300,
+        enable_streaming: bool = True,
     ):
         """
         Initialize the JSON Visualizer.
@@ -37,6 +108,9 @@ class JsonVisualizer(JsonAnnotationTool):
             output_format (str): The output format. Either "text" or "markdown".
             user_message_color (Optional[str]): Hex color code for user messages.
             ai_message_color (Optional[str]): Hex color code for AI messages.
+            max_cache_size (int): Maximum number of items in cache.
+            cache_ttl_seconds (int): Time-to-live in seconds for cached items.
+            enable_streaming (bool): Whether to enable streaming for large files.
 
         Raises:
             ValueError: If the output format is not supported.
@@ -51,9 +125,16 @@ class JsonVisualizer(JsonAnnotationTool):
         self._output_format = output_format
         self._user_message_color = user_message_color
         self._ai_message_color = ai_message_color
+        self._enable_streaming = enable_streaming
+        self._parser_cache = TTLCache(max_size=max_cache_size, ttl_seconds=cache_ttl_seconds)
+        self._streaming_parser = StreamingJSONParser() if enable_streaming else None
+        self._last_cleanup = time.time()
+        self._xml_formatter = XmlFormatter()
 
         logger.debug(
-            f"JsonVisualizer initialized with user_message_color={user_message_color}, ai_message_color={ai_message_color}"
+            f"JsonVisualizer initialized with user_message_color={user_message_color}, "
+            f"ai_message_color={ai_message_color}, streaming={enable_streaming}, "
+            f"cache_size={max_cache_size}, cache_ttl={cache_ttl_seconds}s"
         )
 
     @property
@@ -91,6 +172,20 @@ class JsonVisualizer(JsonAnnotationTool):
         """
         logger.info("Processing JSON data for visualization")
 
+        # Periodically cleanup expired cache entries (every 60 seconds)
+        if time.time() - self._last_cleanup > 60:
+            self._parser_cache.cleanup_expired()
+            self._last_cleanup = time.time()
+
+        # Generate a cache key for this data
+        cache_key = self._generate_cache_key(json_data)
+
+        # Check cache first
+        cached_result = self._parser_cache.get(cache_key)
+        if cached_result is not None:
+            logger.debug("Using cached parsed result")
+            return cached_result
+
         try:
             # First try to process as conversation data
             try:
@@ -99,11 +194,15 @@ class JsonVisualizer(JsonAnnotationTool):
                 logger.info(
                     f"Successfully parsed conversation with {len(conversation)} messages"
                 )
-                return self.format_conversation(conversation)
+                result = self.format_conversation(conversation)
+                self._parser_cache.put(cache_key, result)
+                return result
             except ValueError:
                 # If not a conversation, format as generic JSON
                 logger.debug("Not a conversation format, formatting as generic JSON")
-                return self.format_generic_json(json_data)
+                result = self.format_generic_json(json_data)
+                self._parser_cache.put(cache_key, result)
+                return result
         except Exception as e:
             logger.exception(f"Error processing JSON data: {str(e)}")
             raise ToolExecutionError(str(e))
@@ -218,7 +317,6 @@ class JsonVisualizer(JsonAnnotationTool):
     def _format_text_with_xml_tags(self, text: str) -> str:
         """
         Format a string with XML tags for text display.
-        Formats XML tags with the tag on its own line, content indented, and closing tag on its own line.
 
         Args:
             text: The string containing XML tags.
@@ -226,35 +324,8 @@ class JsonVisualizer(JsonAnnotationTool):
         Returns:
             str: A formatted string with XML tags made visible and structured.
         """
-        # First, escape any existing quotes in the text
-        escaped_text = text.replace('"', '\\"')
-
-        # Find all XML tag pairs and their content
-        pattern = r"(<([A-Za-z_][A-Za-z0-9_]*)>)(.*?)(</\2>)"
-
-        def format_xml_block(match):
-            open_tag = match.group(1)
-            tag_name = match.group(2)
-            content = match.group(3)
-            close_tag = match.group(4)
-
-            # Format the opening tag, content, and closing tag with proper structure
-            # Use literal newlines and indentation for direct text display
-            formatted = f"\\n{open_tag}\\n        {content}\\n{close_tag}"
-
-            return formatted
-
-        # Replace each XML block with its formatted version
-        formatted_text = re.sub(
-            pattern, format_xml_block, escaped_text, flags=re.DOTALL
-        )
-
-        # Handle any remaining individual tags (self-closing or unpaired)
-        remaining_pattern = r"(</?[A-Za-z_][A-Za-z0-9_]*>)"
-        formatted_text = re.sub(remaining_pattern, r"\1", formatted_text)
-
-        # Return the text in quotes
-        return f'"{formatted_text}"'
+        # Use the XML formatter for text formatting
+        return self._xml_formatter.format_xml_in_text(text, preserve_quotes=True)
 
     def _create_structured_json_markdown(self, json_data: Any) -> str:
         """
@@ -302,7 +373,7 @@ class JsonVisualizer(JsonAnnotationTool):
             result.append(f"{indent}{{")
             for key, value in json_data.items():
                 key_html = (
-                    f"<span style='color: #0d47a1; font-weight: bold;'>\"{key}\"</span>"
+                    f"<span style='color: #00FFFF; font-weight: bold;'>\"{key}\"</span>"
                 )
 
                 if isinstance(value, (dict, list)):
@@ -367,7 +438,6 @@ class JsonVisualizer(JsonAnnotationTool):
     def _format_string_with_xml_tags(self, text: str) -> str:
         """
         Format a string that contains XML-like tags to make them visible.
-        Formats XML tags with the tag on its own line, content indented, and closing tag on its own line.
 
         Args:
             text: The string containing XML tags.
@@ -375,37 +445,8 @@ class JsonVisualizer(JsonAnnotationTool):
         Returns:
             str: A formatted string with highlighted and structured XML tags.
         """
-        # First, find all XML tag pairs and their content
-        pattern = r"(<([A-Za-z_][A-Za-z0-9_]*)>)(.*?)(</\2>)"
-
-        def format_xml_block(match):
-            open_tag = match.group(1)
-            tag_name = match.group(2)
-            content = match.group(3)
-            close_tag = match.group(4)
-
-            # Format the opening tag, content, and closing tag with explicit HTML structure
-            # Use a very simple approach with pre-formatted text to ensure proper display
-            formatted = f"""<pre style="margin: 0; padding: 0;">
-<span style="color: #9c27b0; font-weight: bold;">{open_tag}</span>
-        {content}
-<span style="color: #9c27b0; font-weight: bold;">{close_tag}</span>
-</pre>"""
-
-            return formatted
-
-        # Replace each XML block with its formatted version
-        formatted = re.sub(pattern, format_xml_block, text, flags=re.DOTALL)
-
-        # Handle any remaining individual tags (self-closing or unpaired)
-        remaining_pattern = r"(</?[A-Za-z_][A-Za-z0-9_]*>)"
-        formatted = re.sub(
-            remaining_pattern,
-            r'<span style="color: #9c27b0; font-weight: bold;">\1</span>',
-            formatted,
-        )
-
-        return formatted
+        # Use the XML formatter for HTML formatting
+        return self._xml_formatter.format_xml_in_html(text)
 
     def parse_conversation_data(
         self, data: Union[str, Dict, List]
@@ -574,6 +615,79 @@ class JsonVisualizer(JsonAnnotationTool):
         logger.info(f"Found {len(matches)} matches for '{search_text}'")
         return matches
 
+    def _generate_cache_key(self, data: Any) -> str:
+        """Generate a cache key for the given data."""
+        # Convert data to a string representation for hashing
+        data_str = json.dumps(data, sort_keys=True, default=str)
+        # Use first 100 chars plus hash for reasonable cache key
+        if len(data_str) > 100:
+            hash_obj = hashlib.md5(data_str.encode())
+            return data_str[:100] + hash_obj.hexdigest()
+        return data_str
+
+    def process_large_json_file(self, file_path: str, max_items: int = 1000) -> str:
+        """Process a large JSON file using streaming.
+
+        Args:
+            file_path: Path to the JSON file.
+            max_items: Maximum number of items to process.
+
+        Returns:
+            Formatted output.
+        """
+        if not self._streaming_parser:
+            raise ToolExecutionError(
+                "Streaming is disabled. Enable it in the constructor to use this method."
+            )
+
+        logger.info(f"Processing large JSON file: {file_path}")
+
+        # Check file size
+        try:
+            default_file_size_validator.validate_file_size(file_path)
+        except Exception as e:
+            logger.warning(f"File size validation failed: {e}")
+            # Continue anyway but warn user
+
+        formatted_items = []
+        count = 0
+
+        try:
+            for item in self._streaming_parser.parse_array_items(file_path):
+                if count >= max_items:
+                    formatted_items.append(f"... (truncated at {max_items} items)")
+                    break
+
+                # Try to parse as conversation item
+                try:
+                    if isinstance(item, dict) and 'role' in item:
+                        formatted = self._format_single_message(item)
+                        formatted_items.append(formatted)
+                    else:
+                        formatted_items.append(prettify_json(item))
+                except Exception:
+                    formatted_items.append(str(item))
+
+                count += 1
+
+            logger.info(f"Successfully processed {count} items from file")
+            return "\n\n".join(formatted_items)
+
+        except Exception as e:
+            logger.error(f"Error processing large file: {e}")
+            raise ToolExecutionError(f"Failed to process large file: {str(e)}")
+
+    def _format_single_message(self, message: Dict) -> str:
+        """Format a single message."""
+        if self._output_format == "markdown":
+            return format_conversation_as_markdown(
+                [message],
+                user_message_color=self._user_message_color,
+                ai_message_color=self._ai_message_color,
+            )
+        else:
+            return format_conversation_as_text([message])
+
     @property
     def output_format(self) -> str:
         """
@@ -656,34 +770,6 @@ class JsonVisualizer(JsonAnnotationTool):
         Returns:
             str: A properly formatted JSON string with XML tags.
         """
-        # Find all XML tag pairs and their content
-        pattern = r"(<([A-Za-z_][A-Za-z0-9_]*)>)(.*?)(</\2>)"
-
-        # Create a new string with formatted XML tags
-        result = ""
-        last_end = 0
-
-        # Process each XML tag match
-        for match in re.finditer(pattern, text, re.DOTALL):
-            # Add any text before this match
-            if match.start() > last_end:
-                result += text[last_end : match.start()]
-
-            # Extract the components
-            open_tag = match.group(1)
-            content = match.group(3)
-            close_tag = match.group(4)
-
-            # Add the formatted version with explicit newlines and indentation
-            result += f"{open_tag}\n        {content}\n{close_tag}"
-
-            # Update the last end position
-            last_end = match.end()
-
-        # Add any remaining text
-        if last_end < len(text):
-            result += text[last_end:]
-
-        # Return the text as a properly escaped JSON string
-        # Use raw string to ensure newlines are preserved
-        return json.dumps(result, ensure_ascii=False)
+        # Use the XML formatter for JSON formatting
+        formatted = self._xml_formatter.format_xml_in_text(text, preserve_quotes=False)
+        return json.dumps(formatted, ensure_ascii=False)
