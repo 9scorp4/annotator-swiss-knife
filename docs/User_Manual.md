@@ -23,10 +23,11 @@ The Data Annotation Swiss Knife is a comprehensive toolkit designed to streamlin
 
 ### Key Features
 
-- **Multiple Tools in One**: Three powerful tools in a single application
+- **Multiple Tools in One**: Five powerful tools in a single application
 - **Dual Interface**: Both graphical (GUI) and command-line (CLI) interfaces
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 - **No Admin Rights Required**: Perfect for corporate environments
+- **Advanced Infrastructure**: Performance profiling, streaming, validation, error recovery, and security features
 - **Extensible Architecture**: Easy to add new tools and features
 - **Comprehensive Error Handling**: Detailed error messages with actionable suggestions
 
@@ -168,11 +169,12 @@ scripts\run\run.bat gui
 
 ### Main Interface
 
-Upon launching, you'll see the main application window with three tool tabs:
+Upon launching, you'll see the main application window with four tool tabs:
 
 1. **Dictionary to Bullet** - Convert dictionaries to formatted lists
 2. **Text Cleaner** - Clean and transform text data
 3. **JSON Visualizer** - Format and visualize JSON data (including conversation data)
+4. **Conversation Generator** - Build AI conversation JSON data turn-by-turn
 
 Each tab provides a dedicated interface for its specific functionality.
 
@@ -219,7 +221,87 @@ Input:  ```python\nprint('Hello world!')\n```
 Output: print('Hello world!')
 ```
 
-### 3. JSON Visualizer
+### 3. Conversation Generator
+
+**Purpose**: Build AI conversation JSON data by adding conversation turns (user message + assistant response pairs).
+
+**Input**: Either a JSON file with turn pairs, or programmatic turn-by-turn building
+**Output**: Properly formatted conversation JSON array
+
+**Key Features**:
+- Add up to 20 conversation turns (configurable)
+- Validate user and assistant messages
+- Load from and save to JSON format
+- Generate pretty-printed or compact JSON
+- Manage conversation turns (add, remove, clear)
+
+**Example Input** (JSON file):
+```json
+{
+  "turns": [
+    {"user": "Hello, how are you?", "assistant": "I'm doing well, thank you!"},
+    {"user": "What's the weather like?", "assistant": "I don't have access to weather information."}
+  ]
+}
+```
+
+**Example Output**:
+```json
+[
+  {"role": "user", "content": "Hello, how are you?"},
+  {"role": "assistant", "content": "I'm doing well, thank you!"},
+  {"role": "user", "content": "What's the weather like?"},
+  {"role": "assistant", "content": "I don't have access to weather information."}
+]
+```
+
+**Use Cases**:
+- Creating training data for AI models
+- Building conversation datasets for annotation
+- Testing conversational interfaces
+- Generating synthetic dialogue data
+
+### 4. Text Collector
+
+**Purpose**: Collect text from multiple input fields and output them as a JSON list, automatically filtering out empty or whitespace-only strings.
+
+**Input**: Text file with one item per line (CLI) or multiple text input fields (GUI)
+**Output**: JSON array of collected text items
+
+**Key Features**:
+- Support for up to 20 text fields (configurable)
+- Automatic filtering of empty and whitespace-only entries
+- Whitespace trimming from collected text
+- Dynamic field addition/removal in GUI
+- Pretty-printed or compact JSON output
+
+**Example Input** (text file):
+```
+First item
+Second item
+
+Third item
+
+Fourth item
+```
+
+**Example Output**:
+```json
+[
+  "First item",
+  "Second item",
+  "Third item",
+  "Fourth item"
+]
+```
+
+**Use Cases**:
+- Collecting keywords or tags for annotation
+- Building lists from multi-line text input
+- Preparing data for bulk JSON operations
+- Creating arrays from separated text entries
+
+### 5. JSON Visualizer
 
 **Purpose**: Visualizes and formats JSON data with special handling for conversation data, XML tags, and malformed JSON repair.
 
@@ -235,7 +317,7 @@ Output: print('Hello world!')
 - XML tag formatting for better readability
 - Search functionality within JSON data
 
-#### 3a. Conversation Data in JSON Visualizer
+#### 4a. Conversation Data in JSON Visualizer
 
 The JSON Visualizer includes special handling for conversation data formats:
 
@@ -358,6 +440,66 @@ annotation-toolkit textclean --transform-back cleaned.txt --output code_format.t
 annotation-toolkit textclean *.txt --batch-process
 ```
 
+#### Conversation Generator
+
+```bash
+# Generate conversation from turn pairs
+annotation-toolkit convgen input.json --output conversation.json --format pretty
+
+# Generate compact JSON (no indentation)
+annotation-toolkit convgen input.json --output conversation.json --format compact
+
+# Output to stdout
+annotation-toolkit convgen input.json
+```
+
+**Input File Format**:
+```json
+{
+  "turns": [
+    {"user": "User message 1", "assistant": "Assistant response 1"},
+    {"user": "User message 2", "assistant": "Assistant response 2"}
+  ]
+}
+```
+
+**Features**:
+- Supports up to 20 conversation turns (configurable)
+- Validates all messages are non-empty
+- Proper role assignment (user/assistant)
+- Pretty-printed or compact output format
+
+#### Text Collector
+
+```bash
+# Basic usage (print to stdout)
+annotation-toolkit textcollect items.txt
+
+# Save to file with pretty formatting
+annotation-toolkit textcollect items.txt --output collection.json --format pretty
+
+# Generate compact JSON
+annotation-toolkit textcollect items.txt --output collection.json --format compact
+```
+
+**Input File Format**: Plain text file with one item per line. Empty lines and whitespace-only lines are automatically filtered out.
+
+Example input file (`items.txt`):
+```
+First item
+Second item
+
+Third item
+
+```
+
+**Features**:
+- Automatic empty line filtering
+- Whitespace trimming
+- Support for up to 20 items (configurable)
+- Pretty-printed or compact JSON output
+- UTF-8 encoding support
+
 ### CLI Options
 
 #### Global Options
@@ -410,6 +552,7 @@ The toolkit can be used as a Python library for integration into other applicati
 ```python
 from annotation_toolkit.core.text.dict_to_bullet import DictToBulletList
 from annotation_toolkit.core.conversation.visualizer import JsonVisualizer
+from annotation_toolkit.core.conversation.generator import ConversationGenerator
 from annotation_toolkit.core.text.text_cleaner import TextCleaner
 ```
 
@@ -451,6 +594,66 @@ print("Cleaned:", cleaned)
 # Transform back to code format
 code_format = cleaner.transform_back(cleaned, "code")
 print("Code format:", code_format)
+```
+
+### Conversation Generator
+
+```python
+# Initialize conversation generator
+conv_gen = ConversationGenerator(max_turns=20)
+
+# Build conversation turn by turn
+conv_gen.add_turn(
+    "Hello, how are you?",
+    "I'm doing well, thank you for asking!"
+)
+
+conv_gen.add_turn(
+    "What can you help me with?",
+    "I can assist with various tasks including answering questions and providing information."
+)
+
+# Generate JSON output
+json_output = conv_gen.generate_json(pretty=True)
+print("Generated conversation:")
+print(json_output)
+
+# Check turn count and capacity
+print(f"Current turns: {conv_gen.get_turn_count()}")
+print(f"Can add more turns: {conv_gen.can_add_turn()}")
+
+# Get specific turn
+turn_0 = conv_gen.get_turn(0)
+if turn_0:
+    user_msg, assistant_msg = turn_0
+    print(f"Turn 0 - User: {user_msg}")
+    print(f"Turn 0 - Assistant: {assistant_msg}")
+
+# Load conversation from JSON
+existing_conversation = [
+    {"role": "user", "content": "Hi!"},
+    {"role": "assistant", "content": "Hello!"},
+    {"role": "user", "content": "How's the weather?"},
+    {"role": "assistant", "content": "I don't have weather data."}
+]
+
+conv_gen.load_from_json(existing_conversation)
+print(f"Loaded {conv_gen.get_turn_count()} turns")
+
+# Generate compact JSON
+compact_json = conv_gen.generate_json(pretty=False)
+print("Compact JSON:", compact_json)
+
+# Clear conversation
+conv_gen.clear()
+print(f"After clear: {conv_gen.get_turn_count()} turns")
+
+# Remove a specific turn
+conv_gen.add_turn("Turn 1", "Response 1")
+conv_gen.add_turn("Turn 2", "Response 2")
+conv_gen.add_turn("Turn 3", "Response 3")
+conv_gen.remove_turn(1)  # Remove turn at index 1
+print(f"After removing turn 1: {conv_gen.get_turn_count()} turns")
 ```
 
 ### JSON Visualizer
@@ -533,6 +736,11 @@ tools:
     user_message_color: "#0d47a1"
     ai_message_color: "#33691e"
     show_timestamps: false
+
+  conversation_generator:
+    enabled: true
+    max_turns: 20
+    default_color: "#9C27B0"
 
   text_cleaner:
     enabled: true
@@ -734,6 +942,487 @@ def json_to_excel(json_data, filename):
     df = pd.DataFrame(json_data)
     df.to_excel(filename, index=False)
 ```
+
+### Performance Profiling
+
+The toolkit includes comprehensive performance profiling capabilities to monitor and optimize operations.
+
+#### Using Performance Profilers
+
+```python
+from annotation_toolkit.utils.profiling import (
+    PerformanceProfiler,
+    MemoryProfiler,
+    profile_performance,
+    profile_memory,
+    RegressionDetector
+)
+
+# Decorator-based profiling
+@profile_performance(name="data_processing")
+def process_large_dataset(data):
+    # Your processing logic
+    pass
+
+# Context manager profiling
+profiler = PerformanceProfiler()
+with profiler.profile("operation_name"):
+    # Code to profile
+    result = expensive_operation()
+
+# Get statistics
+stats = profiler.get_statistics("operation_name")
+print(f"Average time: {stats['avg_time']:.4f}s")
+print(f"Min time: {stats['min_time']:.4f}s")
+print(f"Max time: {stats['max_time']:.4f}s")
+print(f"95th percentile: {stats['p95']:.4f}s")
+print(f"99th percentile: {stats['p99']:.4f}s")
+print(f"Total calls: {stats['call_count']}")
+
+# Memory profiling
+mem_profiler = MemoryProfiler()
+with mem_profiler.profile("memory_intensive_op"):
+    large_data = load_large_file()
+    process(large_data)
+
+mem_stats = mem_profiler.get_memory_stats("memory_intensive_op")
+print(f"Peak memory: {mem_stats['peak_memory_mb']:.2f} MB")
+
+# Detect performance regressions
+detector = RegressionDetector(threshold_percent=10)
+is_regression = detector.check_regression(
+    baseline_time=1.0,
+    current_time=1.15
+)
+if is_regression:
+    print("Performance regression detected!")
+```
+
+### Streaming for Large Files
+
+Handle large JSON files without loading them entirely into memory.
+
+#### Streaming JSON Parser
+
+```python
+from annotation_toolkit.utils.streaming import StreamingJSONParser
+
+parser = StreamingJSONParser()
+
+# Stream array elements one by one
+for item in parser.stream_array("large_conversation.json"):
+    # Process each conversation turn individually
+    print(f"Processing turn: {item['role']}")
+    process_turn(item)
+
+# Stream object key-value pairs
+for key, value in parser.stream_object("large_data.json"):
+    print(f"Key: {key}, Value: {value}")
+
+# Chunk-based file processing
+for chunk in parser.read_in_chunks("huge_file.json", chunk_size=1024*1024):
+    # Process 1MB chunks
+    process_chunk(chunk)
+```
+
+### Data Validation Framework
+
+Validate JSON, conversation data, and text files with detailed error reporting.
+
+#### JSON and Conversation Validation
+
+```python
+from annotation_toolkit.utils.validation import (
+    validate_json_file,
+    validate_conversation_file,
+    JsonStreamingValidator,
+    ConversationValidator,
+    ValidationSeverity
+)
+
+# Validate JSON against a schema
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "number"}
+    },
+    "required": ["name"]
+}
+
+result = validate_json_file("user_data.json", schema=schema)
+
+if not result.is_valid:
+    for message in result.messages:
+        severity = message.severity.name
+        print(f"[{severity}] Line {message.line}: {message.message}")
+        if message.suggestion:
+            print(f"   Suggestion: {message.suggestion}")
+else:
+    print("✓ Validation passed")
+
+# Validate conversation data
+conv_result = validate_conversation_file(
+    "conversation.json",
+    max_turns=20,
+    required_fields=["role", "content"]
+)
+
+# Streaming validation for large files
+validator = JsonStreamingValidator(schema=schema)
+for is_valid, message in validator.validate_stream("large_file.json"):
+    if not is_valid:
+        print(f"Validation error: {message}")
+
+# Conversation-specific validation
+conv_validator = ConversationValidator(max_turns=50)
+for is_valid, message in conv_validator.validate_stream("conversations.json"):
+    if not is_valid:
+        print(f"Invalid conversation: {message}")
+```
+
+### Error Recovery Strategies
+
+Implement robust error handling with automatic retry, circuit breakers, and fallback mechanisms.
+
+#### Retry with Exponential Backoff
+
+```python
+from annotation_toolkit.utils.recovery import (
+    exponential_retry,
+    linear_retry,
+    circuit_breaker,
+    with_fallback,
+    ExponentialBackoffStrategy,
+    CircuitBreaker,
+    RetryableOperation
+)
+
+# Decorator-based retry
+@exponential_retry(max_attempts=3, base_delay=1.0, max_delay=10.0)
+def fetch_data_from_api():
+    # Operation that might fail transiently
+    response = external_api.get_data()
+    return response
+
+# Linear backoff for predictable delays
+@linear_retry(max_attempts=5, delay=2.0)
+def process_file(filename):
+    # File operation that might fail
+    with open(filename, 'r') as f:
+        return f.read()
+
+# Circuit breaker pattern
+@circuit_breaker(failure_threshold=5, timeout=60)
+def call_external_service():
+    # Fails fast after threshold is reached
+    return service.call()
+
+# Fallback mechanism
+@with_fallback(fallback_value={"default": "data"})
+def load_config():
+    # Returns fallback if operation fails
+    return config_loader.load()
+
+# Manual retry strategy
+strategy = ExponentialBackoffStrategy(
+    max_attempts=3,
+    base_delay=1.0,
+    max_delay=30.0
+)
+
+operation = RetryableOperation(strategy)
+result = operation.execute(
+    lambda: risky_operation(),
+    retry_on=[ConnectionError, TimeoutError]
+)
+
+# Circuit breaker with manual control
+breaker = CircuitBreaker(
+    failure_threshold=10,
+    timeout=120
+)
+
+if breaker.can_execute():
+    try:
+        result = external_call()
+        breaker.record_success()
+    except Exception as e:
+        breaker.record_failure()
+        raise
+
+print(f"Circuit breaker state: {breaker.state.name}")
+print(f"Failure count: {breaker.failure_count}")
+```
+
+### Structured Logging
+
+Enhanced logging with context tracking, performance metrics, and audit trails.
+
+#### Context-Aware Logging
+
+```python
+from annotation_toolkit.utils.structured_logging import (
+    StructuredLogger,
+    LoggingContext,
+    PerformanceTracker,
+    AuditLogger,
+    log_performance,
+    audit_file_operation
+)
+
+# Initialize structured logger
+logger = StructuredLogger("my_application")
+
+# Log with context
+with LoggingContext(user_id="user123", request_id="req456", session_id="sess789"):
+    logger.info("Processing user request", extra={
+        "item_count": 42,
+        "operation": "batch_process"
+    })
+
+    # All logs within this context include user_id, request_id, session_id
+    logger.debug("Starting validation")
+    result = validate_data(data)
+    logger.info("Validation complete", extra={"result": result})
+
+# Performance tracking with logging
+tracker = PerformanceTracker(logger)
+
+with tracker.track("data_processing"):
+    # Automatically logs performance metrics
+    process_large_dataset()
+
+# Performance metrics are logged with:
+# - Execution time
+# - Memory usage (if psutil available)
+# - CPU usage
+
+# Decorator-based performance logging
+@log_performance(logger=logger, operation_name="file_processing")
+def process_file(filename):
+    # Performance automatically logged
+    with open(filename, 'r') as f:
+        return f.read()
+
+# Audit logging for compliance
+audit_logger = AuditLogger("security_audit")
+
+@audit_file_operation(
+    logger=audit_logger,
+    operation_type="write",
+    include_content_hash=True
+)
+def save_sensitive_data(filepath, data):
+    with open(filepath, 'w') as f:
+        f.write(data)
+
+# Audit log includes:
+# - Timestamp
+# - User/session context
+# - Operation type
+# - File path
+# - Success/failure
+# - Content hash (if enabled)
+```
+
+### Resource Management
+
+Automatic cleanup of file handles, temporary files, and pooled resources.
+
+#### Managed Resources
+
+```python
+from annotation_toolkit.utils.resources import (
+    ManagedResource,
+    ResourcePool,
+    managed_file,
+    temporary_file,
+    resource_scope,
+    TemporaryDirectory
+)
+
+# Managed file handles (auto-close)
+with managed_file("/path/to/file.txt", mode="r") as f:
+    content = f.read()
+# File automatically closed, even if exception occurs
+
+# Temporary files with auto-cleanup
+with temporary_file(suffix=".json") as temp_path:
+    # Write to temporary file
+    with open(temp_path, 'w') as f:
+        json.dump(data, f)
+
+    # Process temporary file
+    result = process_json_file(temp_path)
+# Temporary file automatically deleted
+
+# Temporary directories
+with TemporaryDirectory() as temp_dir:
+    # Create files in temporary directory
+    file_path = os.path.join(temp_dir, "data.json")
+    save_data(file_path, my_data)
+
+    # Process files
+    process_directory(temp_dir)
+# Directory and all contents automatically deleted
+
+# Resource pooling
+pool = ResourcePool(
+    create_resource=lambda: create_database_connection(),
+    max_size=10,
+    timeout=30.0
+)
+
+# Acquire resource from pool
+with pool.acquire() as connection:
+    result = connection.execute(query)
+# Resource automatically returned to pool
+
+# Resource scope for complex cleanup
+with resource_scope() as scope:
+    # Register resources for cleanup
+    file1 = open("file1.txt", "w")
+    scope.register(file1, cleanup=lambda f: f.close())
+
+    file2 = open("file2.txt", "w")
+    scope.register(file2, cleanup=lambda f: f.close())
+
+    # Use resources
+    file1.write("data1")
+    file2.write("data2")
+# All registered resources automatically cleaned up
+```
+
+### Security Features
+
+Path validation, input sanitization, rate limiting, and secure file operations.
+
+#### Security Utilities
+
+```python
+from annotation_toolkit.utils.security import (
+    PathValidator,
+    InputSanitizer,
+    RateLimiter,
+    SecureFileHandler,
+    FileSizeValidator
+)
+
+# Path validation (prevent directory traversal)
+validator = PathValidator(
+    allowed_base="/safe/directory",
+    max_path_length=4096,
+    allow_symlinks=False
+)
+
+user_provided_path = "/safe/directory/user_file.txt"
+if validator.validate_path(user_provided_path):
+    # Safe to use
+    process_file(user_provided_path)
+else:
+    print("Invalid or unsafe path")
+
+# Input sanitization
+sanitizer = InputSanitizer()
+
+# Sanitize for display (prevent XSS)
+user_input = "<script>alert('xss')</script>"
+safe_display = sanitizer.sanitize_for_display(user_input)
+print(safe_display)  # &lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;
+
+# Sanitize for file names
+filename = sanitizer.sanitize_filename("../../etc/passwd")
+print(filename)  # etc_passwd
+
+# Sanitize SQL (basic protection)
+sql_input = "'; DROP TABLE users; --"
+safe_sql = sanitizer.sanitize_sql(sql_input)
+
+# Rate limiting
+limiter = RateLimiter(
+    max_requests=100,
+    window_seconds=60
+)
+
+user_id = "user123"
+if limiter.check_rate_limit(user_id):
+    # Process request
+    handle_request(user_id)
+else:
+    print("Rate limit exceeded")
+
+# File size validation
+size_validator = FileSizeValidator(max_size_mb=100)
+
+if size_validator.validate_file_size("/path/to/file.txt"):
+    # Safe to process
+    process_file("/path/to/file.txt")
+else:
+    print("File exceeds maximum size")
+
+# Secure file handler (combines multiple security checks)
+secure_handler = SecureFileHandler(
+    allowed_base="/safe/directory",
+    max_file_size_mb=50,
+    allow_symlinks=False
+)
+
+try:
+    # Reads file with security checks
+    data = secure_handler.read_file("/safe/directory/data.json")
+
+    # Writes file with security checks
+    secure_handler.write_file(
+        "/safe/directory/output.json",
+        json.dumps(processed_data)
+    )
+except SecurityError as e:
+    print(f"Security violation: {e}")
+```
+
+### Configuration for Advanced Features
+
+Add these settings to your configuration file to control advanced features:
+
+```yaml
+security:
+  max_file_size_mb: 100
+  max_path_length: 4096
+  allow_symlinks: false
+  rate_limit_requests_per_minute: 100
+
+performance:
+  enable_caching: true
+  cache_ttl_seconds: 300
+  streaming_threshold_mb: 10  # Use streaming for files larger than 10MB
+  enable_profiling: false       # Enable performance profiling
+
+logging:
+  level: INFO                   # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  structured_logging: true      # Enable structured logging
+  audit_trail: true             # Enable audit logging
+  max_log_size_mb: 50
+  backup_count: 5
+
+validation:
+  strict_mode: true             # Fail on validation warnings
+  max_validation_errors: 100    # Stop after 100 errors
+
+error_recovery:
+  max_retry_attempts: 3
+  base_retry_delay: 1.0
+  max_retry_delay: 30.0
+  circuit_breaker_threshold: 10
+  circuit_breaker_timeout: 120
+```
+
+For comprehensive documentation on advanced features, see:
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design patterns
+- [PERFORMANCE.md](PERFORMANCE.md) - Performance optimization guide
+- [SECURITY.md](SECURITY.md) - Security features and best practices
+- [API_REFERENCE.md](API_REFERENCE.md) - Complete API documentation
+- [CONFIGURATION_REFERENCE.md](CONFIGURATION_REFERENCE.md) - All configuration options
 
 ---
 
