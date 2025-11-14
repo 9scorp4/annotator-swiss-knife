@@ -4,9 +4,23 @@ A comprehensive yet simple toolkit designed to streamline various data annotatio
 
 ## Features
 
+### Core Annotation Tools
+
 * **Dictionary to Bullet List**: Convert dictionaries with URLs to formatted bullet lists with hyperlinks
 * **Text Cleaner**: Clean text from markdown/JSON/code artifacts and transform cleaned text back to code format
 * **JSON Visualizer**: Visualize and format JSON data with special handling for conversation data, XML tags, and malformed JSON repair
+* **Conversation Generator**: Build AI conversation JSON data turn-by-turn, supporting up to 20 conversation turns with validation
+* **Text Collector**: Collect text from multiple fields and output them as a JSON list, with automatic empty string filtering
+
+### Advanced Infrastructure
+
+* **Performance Profiling**: Track execution time, memory usage, and detect performance regressions with comprehensive statistics
+* **Streaming Support**: Handle large files efficiently without loading entire contents into memory
+* **Validation Framework**: Validate JSON, conversation data, and text files with detailed error reporting
+* **Error Recovery**: Automatic retry with exponential backoff, circuit breaker pattern, and fallback handling
+* **Structured Logging**: Enhanced logging with context tracking, performance metrics, and audit trails
+* **Resource Management**: Automatic cleanup of file handles, temporary files, and pooled resources
+* **Security Features**: Path validation, input sanitization, rate limiting, and secure file operations
 * **Enhanced Error Handling**: Comprehensive error handling system with detailed error messages, error codes, and actionable suggestions
 
 ## Installation
@@ -158,6 +172,59 @@ To transform cleaned text back to code format:
 annotation-toolkit textclean --transform-back cleaned.txt --output code_format.txt --format code
 ```
 
+#### Conversation Generator
+
+```bash
+annotation-toolkit convgen input.json --output conversation.json --format pretty
+```
+
+The input JSON file should have the following format:
+
+```json
+{
+  "turns": [
+    {"user": "Hello, how are you?", "assistant": "I'm doing well, thank you!"},
+    {"user": "What's the weather like?", "assistant": "I don't have access to weather information."}
+  ]
+}
+```
+
+The output will be a properly formatted conversation JSON array:
+
+```json
+[
+  {"role": "user", "content": "Hello, how are you?"},
+  {"role": "assistant", "content": "I'm doing well, thank you!"},
+  {"role": "user", "content": "What's the weather like?"},
+  {"role": "assistant", "content": "I don't have access to weather information."}
+]
+```
+
+#### Text Collector
+
+```bash
+annotation-toolkit textcollect input.txt --output collection.json --format pretty
+```
+
+The input file should be a text file with one text item per line. Empty lines and whitespace-only lines are automatically filtered out.
+
+Example input file (`items.txt`):
+```
+First item
+Second item
+
+Third item
+```
+
+The output will be a JSON array:
+```json
+[
+  "First item",
+  "Second item",
+  "Third item"
+]
+```
+
 #### JSON Visualizer
 
 ```bash
@@ -186,6 +253,7 @@ You can also use the toolkit as a Python library:
 ```python
 from annotation_toolkit.core.text.dict_to_bullet import DictToBulletList
 from annotation_toolkit.core.conversation.visualizer import ConversationVisualizer
+from annotation_toolkit.core.conversation.generator import ConversationGenerator
 from annotation_toolkit.core.text.text_cleaner import TextCleaner
 from annotation_toolkit.core.conversation.visualizer import JsonVisualizer
 
@@ -196,6 +264,21 @@ output = dict_tool.process_dict({
     "2": "https://www.example.com/page2"
 })
 print(output)
+
+# Conversation Generator
+conv_gen = ConversationGenerator(max_turns=20)
+conv_gen.add_turn("Hello, how are you?", "I'm doing well, thank you!")
+conv_gen.add_turn("What's the weather like?", "I don't have access to weather information.")
+json_output = conv_gen.generate_json(pretty=True)
+print(json_output)
+
+# Load from JSON
+conversation_data = [
+    {"role": "user", "content": "Hi!"},
+    {"role": "assistant", "content": "Hello!"}
+]
+conv_gen.load_from_json(conversation_data)
+print(f"Loaded {conv_gen.get_turn_count()} turns")
 
 # Conversation Visualizer
 conv_tool = ConversationVisualizer(output_format="markdown")
@@ -248,6 +331,10 @@ tools:
     default_color: "#2196F3"
     user_message_color: "#0d47a1"
     ai_message_color: "#33691e"
+  conversation_generator:
+    enabled: true
+    max_turns: 20
+    default_color: "#9C27B0"
   text_cleaner:
     enabled: true
     default_color: "#4CAF50"
@@ -267,6 +354,20 @@ data:
   save_directory: ~/annotation_toolkit_data
   autosave: false
   autosave_interval: 300
+security:
+  max_file_size_mb: 100
+  max_path_length: 4096
+  allow_symlinks: false
+  rate_limit_requests_per_minute: 100
+performance:
+  enable_caching: true
+  cache_ttl_seconds: 300
+  streaming_threshold_mb: 10
+  enable_profiling: false
+logging:
+  level: INFO
+  structured_logging: false
+  audit_trail: false
 ```
 
 To use a custom configuration file:
@@ -327,25 +428,241 @@ For instructions on building standalone executables for macOS and Windows, see t
 
 ```
 annotator_swiss_knife/
-├── annotation_toolkit/       # Main package source code
-├── scripts/                  # Scripts for building, running, and setting up
-│   ├── build/                # Build scripts for creating executables
-│   ├── run/                  # Scripts for running the application
-│   └── setup/                # Scripts for setting up the environment
-├── tests/                    # Test suite
-│   ├── core/                 # Tests for core functionality
-│   ├── utils/                # Tests for utility modules
-│   ├── test_base.py          # Tests for base classes
-│   ├── test_cli.py           # Tests for command-line interface
-│   ├── test_config.py        # Tests for configuration management
-│   ├── run_tests.py          # Script to run all tests
-│   └── README.md             # Test suite documentation
-├── .gitignore                # Git ignore file
-├── README.md                 # Main documentation
-├── README_BUILD.md           # Build instructions
-├── requirements.txt          # Package dependencies
-└── setup.py                  # Package setup script
+├── annotation_toolkit/          # Main package source code
+│   ├── core/                    # Core annotation tools
+│   │   ├── base.py              # Base classes for all tools
+│   │   ├── conversation/        # Conversation-related tools
+│   │   │   ├── generator.py     # Conversation generator
+│   │   │   └── visualizer.py    # JSON/conversation visualizer
+│   │   └── text/                # Text processing tools
+│   │       ├── dict_to_bullet.py
+│   │       └── text_cleaner.py
+│   ├── di/                      # Dependency injection system
+│   │   ├── bootstrap.py         # DI container bootstrap
+│   │   ├── container.py         # DI container implementation
+│   │   └── decorators.py        # DI decorators (@inject)
+│   ├── ui/                      # User interfaces
+│   │   ├── cli/                 # Command-line interface
+│   │   └── gui/                 # Graphical user interface
+│   │       └── widgets/         # GUI widgets for each tool
+│   ├── utils/                   # Utility modules
+│   │   ├── error_handler.py     # Error handling system
+│   │   ├── errors.py            # Custom exceptions
+│   │   ├── file_utils.py        # File operations
+│   │   ├── json/                # JSON utilities
+│   │   │   └── fixer.py         # JSON repair utilities
+│   │   ├── xml/                 # XML utilities
+│   │   │   └── formatter.py     # XML formatting
+│   │   ├── profiling.py         # Performance profiling
+│   │   ├── streaming.py         # Large file streaming
+│   │   ├── validation.py        # Data validation framework
+│   │   ├── recovery.py          # Error recovery strategies
+│   │   ├── structured_logging.py # Enhanced logging
+│   │   ├── resources.py         # Resource management
+│   │   └── security.py          # Security utilities
+│   ├── cli.py                   # CLI entry point
+│   └── config.py                # Configuration management
+├── docs/                        # Documentation
+│   ├── ARCHITECTURE.md          # Architecture overview
+│   ├── SECURITY.md              # Security documentation
+│   ├── PERFORMANCE.md           # Performance guide
+│   ├── API_REFERENCE.md         # API reference
+│   ├── CONFIGURATION_REFERENCE.md # Config reference
+│   └── DEPENDENCY_INJECTION_IMPLEMENTATION.md
+├── scripts/                     # Scripts for building, running, and setting up
+│   ├── build/                   # Build scripts for creating executables
+│   ├── run/                     # Scripts for running the application
+│   └── setup/                   # Scripts for setting up the environment
+├── tests/                       # Test suite
+│   ├── core/                    # Tests for core functionality
+│   ├── utils/                   # Tests for utility modules
+│   ├── test_base.py             # Tests for base classes
+│   ├── test_cli.py              # Tests for command-line interface
+│   ├── test_config.py           # Tests for configuration management
+│   ├── test_dependency_injection.py # Tests for DI system
+│   ├── run_tests.py             # Script to run all tests
+│   └── README.md                # Test suite documentation
+├── .gitignore                   # Git ignore file
+├── CLAUDE.md                    # Developer guidance for Claude Code
+├── README.md                    # Main documentation
+├── README_BUILD.md              # Build instructions
+├── User_Manual.md               # End-user manual
+├── requirements.txt             # Package dependencies
+└── setup.py                     # Package setup script
 ```
+
+## Advanced Features
+
+The toolkit includes advanced infrastructure for performance monitoring, error recovery, security, and resource management.
+
+### Performance Profiling
+
+Track execution time, memory usage, and detect performance regressions:
+
+```python
+from annotation_toolkit.utils.profiling import (
+    PerformanceProfiler,
+    MemoryProfiler,
+    profile_performance,
+    profile_memory
+)
+
+# Use decorators for automatic profiling
+@profile_performance(name="my_operation")
+def process_data(data):
+    # Your code here
+    pass
+
+# Or use profilers directly
+profiler = PerformanceProfiler()
+with profiler.profile("operation_name"):
+    # Code to profile
+    pass
+
+stats = profiler.get_statistics("operation_name")
+print(f"Average time: {stats['avg_time']:.4f}s")
+print(f"95th percentile: {stats['p95']:.4f}s")
+
+# Memory profiling
+mem_profiler = MemoryProfiler()
+with mem_profiler.profile("memory_intensive_op"):
+    # Code to profile
+    pass
+```
+
+### Streaming for Large Files
+
+Handle large files efficiently without loading them entirely into memory:
+
+```python
+from annotation_toolkit.utils.streaming import StreamingJSONParser
+
+# Stream large JSON files
+parser = StreamingJSONParser()
+for item in parser.stream_array("large_file.json"):
+    # Process each item individually
+    process(item)
+
+# Stream JSON objects
+for key, value in parser.stream_object("large_object.json"):
+    # Process each key-value pair
+    process(key, value)
+```
+
+### Validation Framework
+
+Validate data with detailed error reporting:
+
+```python
+from annotation_toolkit.utils.validation import (
+    validate_json_file,
+    validate_conversation_file,
+    JsonStreamingValidator
+)
+
+# Validate JSON against a schema
+result = validate_json_file("data.json", schema=my_schema)
+if not result.is_valid:
+    for message in result.messages:
+        print(f"{message.severity}: {message.message}")
+
+# Validate conversation data
+result = validate_conversation_file("conversation.json", max_turns=20)
+```
+
+### Error Recovery Strategies
+
+Automatic retry with exponential backoff and circuit breaker patterns:
+
+```python
+from annotation_toolkit.utils.recovery import (
+    exponential_retry,
+    circuit_breaker,
+    with_fallback,
+    ExponentialBackoffStrategy
+)
+
+# Automatic retry with exponential backoff
+@exponential_retry(max_attempts=3, base_delay=1.0)
+def unreliable_operation():
+    # Operation that might fail
+    pass
+
+# Circuit breaker pattern
+@circuit_breaker(failure_threshold=5, timeout=60)
+def external_service_call():
+    # Call to external service
+    pass
+
+# Fallback handling
+@with_fallback(fallback_value="default")
+def risky_operation():
+    # Operation with fallback
+    pass
+```
+
+### Structured Logging
+
+Enhanced logging with context tracking and audit trails:
+
+```python
+from annotation_toolkit.utils.structured_logging import (
+    StructuredLogger,
+    LoggingContext,
+    audit_file_operation
+)
+
+logger = StructuredLogger("my_module")
+
+# Log with context
+with LoggingContext(user_id="user123", request_id="req456"):
+    logger.info("Processing request", extra={"item_count": 42})
+
+# Audit file operations
+@audit_file_operation(operation_type="write")
+def save_file(path, data):
+    # File operation
+    pass
+```
+
+### Security Features
+
+Path validation, input sanitization, and rate limiting:
+
+```python
+from annotation_toolkit.utils.security import (
+    PathValidator,
+    InputSanitizer,
+    RateLimiter,
+    SecureFileHandler
+)
+
+# Validate paths to prevent directory traversal
+validator = PathValidator(allowed_base="/safe/path")
+if validator.validate_path("/safe/path/file.txt"):
+    # Path is safe
+    pass
+
+# Sanitize user input
+sanitizer = InputSanitizer()
+clean_input = sanitizer.sanitize_for_display(user_input)
+
+# Rate limiting
+limiter = RateLimiter(max_requests=100, window_seconds=60)
+if limiter.check_rate_limit("user_id"):
+    # Process request
+    pass
+
+# Secure file operations
+handler = SecureFileHandler()
+data = handler.read_file("/path/to/file.json")
+```
+
+For more details on advanced features, see:
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture
+- [PERFORMANCE.md](docs/PERFORMANCE.md) - Performance optimization guide
+- [SECURITY.md](docs/SECURITY.md) - Security features and best practices
+- [API_REFERENCE.md](docs/API_REFERENCE.md) - Complete API documentation
 
 ## Extending the Toolkit
 
