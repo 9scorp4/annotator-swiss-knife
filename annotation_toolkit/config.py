@@ -46,11 +46,16 @@ class Config:
                 "enabled": True,
                 "debug_logging": True,  # Set to True to enable debug logging
             },
+            "text_collector": {
+                "enabled": True,
+                "max_fields": 20,  # Maximum number of text fields to collect
+                "filter_empty": True,  # Filter out empty/whitespace-only strings
+            },
         },
         "ui": {
             "theme": "default",
             "font_size": 12,
-            "window_size": {"width": 1000, "height": 700},
+            "window_size": {"width": 1400, "height": 900},  # Increased for more space
         },
         "data": {
             "save_directory": "",
@@ -61,6 +66,45 @@ class Config:
             "level": "DEBUG",  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
             "file_logging": True,
             "console_logging": True,
+        },
+        "security": {
+            "max_file_size": 100 * 1024 * 1024,  # 100MB default
+            "max_path_length": 4096,
+            "allowed_extensions": [".json", ".yaml", ".yml", ".txt", ".md", ".csv"],
+            "rate_limit": {
+                "window_seconds": 60,
+                "max_requests": 100,
+            },
+            "path_validation": {
+                "check_symlinks": True,
+                "max_symlink_depth": 10,
+                "allow_hidden_files": False,
+            },
+            "encoding": {
+                "default": "utf-8",
+                "auto_detect": True,
+                "confidence_threshold": 0.7,
+                "fallback_encodings": ["latin-1", "cp1252", "iso-8859-1"],
+            },
+        },
+        "performance": {
+            "cache": {
+                "enabled": True,
+                "max_size": 128,
+                "ttl_seconds": 300,
+            },
+            "streaming": {
+                "enabled": True,
+                "chunk_size": 8192,
+                "max_items": 1000,
+            },
+            "retry": {
+                "enabled": True,
+                "max_attempts": 3,
+                "base_delay": 0.1,
+                "max_delay": 2.0,
+                "exponential_base": 2.0,
+            },
         },
     }
 
@@ -97,6 +141,34 @@ class Config:
         logger.debug(f"Ensuring save directory exists: {save_dir}")
         os.makedirs(save_dir, exist_ok=True)
         logger.info(f"Configuration initialized successfully")
+
+    def get_security_config(self, *keys) -> Any:
+        """
+        Get security configuration values.
+
+        Args:
+            *keys: Nested keys to retrieve from security config.
+
+        Returns:
+            The requested configuration value.
+
+        Example:
+            config.get_security_config('max_file_size')
+            config.get_security_config('rate_limit', 'max_requests')
+        """
+        return self.get('security', *keys)
+
+    def get_performance_config(self, *keys) -> Any:
+        """
+        Get performance configuration values.
+
+        Args:
+            *keys: Nested keys to retrieve from performance config.
+
+        Returns:
+            The requested configuration value.
+        """
+        return self.get('performance', *keys)
 
     @with_error_handling(
         error_code=ErrorCode.FILE_READ_ERROR,
