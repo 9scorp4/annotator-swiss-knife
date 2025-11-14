@@ -16,15 +16,19 @@ from threading import Lock
 
 from .errors import ValidationError, ValueValidationError
 from .logger import get_logger
+from ..config import Config
 
 logger = get_logger()
 
-# Constants for security configuration
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB default max file size
-MAX_PATH_LENGTH = 4096  # Maximum path length
-ALLOWED_EXTENSIONS = {'.json', '.yaml', '.yml', '.txt', '.md', '.csv'}
-RATE_LIMIT_WINDOW = 60  # seconds
-RATE_LIMIT_MAX_REQUESTS = 100  # max requests per window
+# Load security configuration from config
+_config = Config()
+
+# Security configuration with fallbacks
+MAX_FILE_SIZE = _config.get_security_config('max_file_size') or (100 * 1024 * 1024)
+MAX_PATH_LENGTH = _config.get_security_config('max_path_length') or 4096
+ALLOWED_EXTENSIONS = set(_config.get_security_config('allowed_extensions') or ['.json', '.yaml', '.yml', '.txt', '.md', '.csv'])
+RATE_LIMIT_WINDOW = _config.get_security_config('rate_limit', 'window_seconds') or 60
+RATE_LIMIT_MAX_REQUESTS = _config.get_security_config('rate_limit', 'max_requests') or 100
 
 
 class PathValidator:
@@ -55,7 +59,7 @@ class PathValidator:
 
     def validate_path(self, path: Union[str, Path]) -> Path:
         """
-        Validate and sanitize a file path.
+        Validate and sanitize a file path with enhanced symlink protection.
 
         Args:
             path: The path to validate.
@@ -99,20 +103,91 @@ class PathValidator:
                     suggestion="Use absolute paths without special characters"
                 )
 
-        # Resolve the path to its absolute form
+        # Enhanced symlink detection and resolution
         try:
-            # If path doesn't exist yet, resolve its parent
-            if not path_obj.exists():
-                parent = path_obj.parent.resolve()
-                resolved_path = parent / path_obj.name
+            # Track symlink chain to prevent loops
+            seen_paths = set()
+            current_path = path_obj
+            max_symlink_depth = 10
+
+            # Follow symlinks manually to detect loops
+            for _ in range(max_symlink_depth):
+                if current_path in seen_paths:
+                    raise ValidationError(
+                        "Symlink loop detected",
+                        details={"path": str(path_obj)},
+                        suggestion="Avoid circular symbolic links"
+                    )
+                seen_paths.add(current_path)
+
+                if current_path.exists() and current_path.is_symlink():
+                    # Get the target of the symlink
+                    try:
+                        target = current_path.readlink()
+                        if not target.is_absolute():
+                            target = current_path.parent / target
+                        current_path = target
+                    except OSError as e:
+                        raise ValidationError(
+                            f"Cannot read symlink target: {str(e)}",
+                            details={"path": str(current_path)},
+                            suggestion="Check symlink permissions and validity"
+                        )
+                else:
+                    break
             else:
-                resolved_path = path_obj.resolve()
+                raise ValidationError(
+                    "Too many symlinks in path (possible loop)",
+                    details={"path": str(path_obj), "max_depth": max_symlink_depth},
+                    suggestion="Reduce symlink chain depth"
+                )
+
+            # Resolve the final path
+            if not current_path.exists():
+                parent = current_path.parent.resolve(strict=False)
+                resolved_path = parent / current_path.name
+            else:
+                # Use resolve() with strict=True for existing paths
+                resolved_path = current_path.resolve(strict=True)
+
+            # Additional check: ensure resolved path doesn't escape via symlinks
+            # Check each component of the path
+            parts = resolved_path.parts
+            checked_path = Path(parts[0]) if parts else Path()
+
+            for part in parts[1:]:
+                checked_path = checked_path / part
+                if checked_path.exists() and checked_path.is_symlink():
+                    # Verify symlink target is within allowed directories
+                    link_target = checked_path.resolve(strict=True)
+                    link_allowed = False
+                    for allowed_dir in self.allowed_dirs:
+                        try:
+                            link_target.relative_to(allowed_dir)
+                            link_allowed = True
+                            break
+                        except ValueError:
+                            continue
+
+                    if not link_allowed:
+                        logger.warning(f"Symlink escape attempt: {checked_path} -> {link_target}")
+                        raise ValidationError(
+                            "Symlink points outside allowed directories",
+                            details={
+                                "symlink": str(checked_path),
+                                "target": str(link_target)
+                            },
+                            suggestion="Ensure all symlinks point to allowed locations"
+                        )
+
         except (OSError, RuntimeError) as e:
-            raise ValidationError(
-                f"Failed to resolve path: {str(e)}",
-                details={"path": str(path_obj)},
-                suggestion="Ensure the path is valid and accessible"
-            )
+            if "Symlink" not in str(e):  # Don't override our symlink errors
+                raise ValidationError(
+                    f"Failed to resolve path: {str(e)}",
+                    details={"path": str(path_obj)},
+                    suggestion="Ensure the path is valid and accessible"
+                )
+            raise
 
         # Check if the resolved path is within allowed directories
         is_allowed = False

@@ -7,7 +7,7 @@ without loading them entirely into memory.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Union, Callable
+from typing import Any, Dict, Iterator, List, Optional, Union, Callable, Tuple
 import io
 
 from .errors import FileReadError, ParsingError
@@ -60,7 +60,7 @@ class StreamingJSONParser:
         else:
             yield from self._parse_array_fallback(file_path)
 
-    def parse_object_items(self, file_path: Union[str, Path]) -> Iterator[tuple[str, Any]]:
+    def parse_object_items(self, file_path: Union[str, Path]) -> Iterator[Tuple[str, Any]]:
         """
         Stream key-value pairs from a JSON object file.
 
@@ -98,7 +98,7 @@ class StreamingJSONParser:
                 cause=e
             )
 
-    def _parse_object_with_ijson(self, file_path: Path) -> Iterator[tuple[str, Any]]:
+    def _parse_object_with_ijson(self, file_path: Path) -> Iterator[Tuple[str, Any]]:
         """Use ijson to parse JSON object efficiently."""
         try:
             with open(file_path, 'rb') as f:
@@ -185,7 +185,7 @@ class StreamingJSONParser:
                 cause=e
             )
 
-    def _parse_object_fallback(self, file_path: Path) -> Iterator[tuple[str, Any]]:
+    def _parse_object_fallback(self, file_path: Path) -> Iterator[Tuple[str, Any]]:
         """Fallback streaming implementation for JSON objects."""
         # For simplicity, load the whole object for fallback
         # A full streaming implementation would be more complex
