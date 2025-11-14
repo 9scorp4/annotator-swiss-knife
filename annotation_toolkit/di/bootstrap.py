@@ -8,9 +8,11 @@ with all the necessary services for the annotation toolkit.
 from typing import Optional
 
 from ..config import Config
+from ..core.conversation.generator import ConversationGenerator
 from ..core.conversation.visualizer import JsonVisualizer
 from ..core.text.dict_to_bullet import DictToBulletList
 from ..core.text.text_cleaner import TextCleaner
+from ..core.text.text_collector import TextCollector
 from ..utils import logger
 from .container import DIContainer, ServiceScope
 from .interfaces import (
@@ -112,10 +114,10 @@ def create_json_visualizer_tool(
         "tools", "json_visualizer", "output_format", default="text"
     )
     user_message_color = config.get(
-        "tools", "json_visualizer", "user_message_color", default="#0d47a1"
+        "tools", "json_visualizer", "user_message_color", default="#00FFFF"
     )
     ai_message_color = config.get(
-        "tools", "json_visualizer", "ai_message_color", default="#33691e"
+        "tools", "json_visualizer", "ai_message_color", default="#00FF7F"
     )
 
     logger_service.debug(
@@ -145,6 +147,58 @@ def create_text_cleaner_tool(
     """
     logger_service.debug("Creating TextCleaner tool")
     return TextCleaner()
+
+
+def create_conversation_generator_tool(
+    config: ConfigInterface, logger_service: LoggerInterface
+) -> ConversationGenerator:
+    """
+    Factory function to create a ConversationGenerator tool with dependencies.
+
+    Args:
+        config: The configuration service
+        logger_service: The logger service
+
+    Returns:
+        A configured ConversationGenerator instance
+    """
+    # Get configuration for the tool
+    max_turns = config.get(
+        "tools", "conversation_generator", "max_turns", default=20
+    )
+
+    logger_service.debug(
+        f"Creating ConversationGenerator with max_turns={max_turns}"
+    )
+    return ConversationGenerator(max_turns=max_turns)
+
+
+def create_text_collector_tool(
+    config: ConfigInterface, logger_service: LoggerInterface
+) -> TextCollector:
+    """
+    Factory function to create a TextCollector tool with dependencies.
+
+    Args:
+        config: The configuration service
+        logger_service: The logger service
+
+    Returns:
+        A configured TextCollector instance
+    """
+    # Get configuration for the tool
+    max_fields = config.get(
+        "tools", "text_collector", "max_fields", default=20
+    )
+    filter_empty = config.get(
+        "tools", "text_collector", "filter_empty", default=True
+    )
+
+    logger_service.debug(
+        f"Creating TextCollector with max_fields={max_fields}, filter_empty={filter_empty}"
+    )
+    return TextCollector(max_fields=max_fields, filter_empty=filter_empty)
+
 
 
 def configure_services(container: DIContainer, config: Optional[Config] = None) -> None:
@@ -189,6 +243,22 @@ def configure_services(container: DIContainer, config: Optional[Config] = None) 
     container.register_factory(
         interface=TextCleaner,
         factory=create_text_cleaner_tool,
+        scope=ServiceScope.SINGLETON,
+        config=ConfigInterface,
+        logger_service=LoggerInterface,
+    )
+
+    container.register_factory(
+        interface=ConversationGenerator,
+        factory=create_conversation_generator_tool,
+        scope=ServiceScope.SINGLETON,
+        config=ConfigInterface,
+        logger_service=LoggerInterface,
+    )
+
+    container.register_factory(
+        interface=TextCollector,
+        factory=create_text_collector_tool,
         scope=ServiceScope.SINGLETON,
         config=ConfigInterface,
         logger_service=LoggerInterface,
@@ -254,6 +324,18 @@ def get_tool_instances(container: DIContainer) -> dict:
     except Exception as e:
         logger.warning(f"Failed to resolve TextCleaner: {e}")
 
+    try:
+        conv_gen_tool = container.resolve(ConversationGenerator)
+        tools[conv_gen_tool.name] = conv_gen_tool
+    except Exception as e:
+        logger.warning(f"Failed to resolve ConversationGenerator: {e}")
+
+    try:
+        text_collector_tool = container.resolve(TextCollector)
+        tools[text_collector_tool.name] = text_collector_tool
+    except Exception as e:
+        logger.warning(f"Failed to resolve TextCollector: {e}")
+
     logger.info(f"Retrieved {len(tools)} tool instances from DI container")
     return tools
 
@@ -277,6 +359,8 @@ def validate_container_configuration(container: DIContainer) -> bool:
         DictToBulletList,
         JsonVisualizer,
         TextCleaner,
+        ConversationGenerator,
+        TextCollector,
     ]
 
     for service in required_services:
