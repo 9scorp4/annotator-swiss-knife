@@ -94,6 +94,19 @@ See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for complete instructions.
 
 ## Troubleshooting
 
+### Common Issues on Linux
+
+- **GLIBC version mismatch**: The executable requires a minimum GLIBC version. If you see an error like `GLIBC_X.XX' not found`, your system has an older GLIBC version than required.
+  - **Solution 1**: Use the AppImage release build (recommended) - it's more portable
+  - **Solution 2**: Check your GLIBC version with `ldd --version`
+  - **Solution 3**: Use the Python package instead: `pip install annotation-toolkit`
+  - The CI/CD builds use Ubuntu 20.04 (GLIBC 2.31) for better compatibility
+
+- **Qt platform plugin errors**: If you see "Could not find the Qt platform plugin", make sure you have the required X11 libraries installed:
+  ```bash
+  sudo apt-get install libxcb-xinerama0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0
+  ```
+
 ### Common Issues on macOS
 
 - **App won't open due to security settings**: macOS has strict security settings for unsigned applications. To open the app:

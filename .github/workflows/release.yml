@@ -26,7 +26,7 @@ jobs:
             platform: macOS
           - os: windows-latest
             platform: Windows
-          - os: ubuntu-22.04
+          - os: ubuntu-20.04
             platform: Linux
 
     steps:
@@ -109,26 +109,26 @@ jobs:
 
       # Linux Build
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-20.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget fuse libfuse2 imagemagick
 
       - name: Build Linux debug executable
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-20.04'
         working-directory: scripts/build
         run: |
           pyinstaller linux_build_debug.spec --distpath ../../dist --clean --noconfirm
           chmod +x ../../dist/AnnotationToolkit-Debug/AnnotationToolkit-Debug
 
       - name: Build Linux AppImage (Release)
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-20.04'
         run: |
           cd scripts/build
           bash build_appimage.sh
 
       - name: Create Linux debug archive
-        if: matrix.os == 'ubuntu-22.04'
+        if: matrix.os == 'ubuntu-20.04'
         run: |
           cd dist
           VERSION="${{ steps.get_version.outputs.version }}"
