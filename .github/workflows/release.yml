@@ -91,26 +91,26 @@ jobs:
       - name: Create archive (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          cd dist
+          cd scripts/build/dist
           zip -r AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip AnnotationToolkit.app
 
       - name: Rename executable (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          cd dist
+          cd scripts/build/dist
           Copy-Item AnnotationToolkit.exe AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe
 
       - name: Rename executable (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cd dist
+          cd scripts/build/dist
           cp AnnotationToolkit AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux
           chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux
 
       - name: Generate checksums
         shell: bash
         run: |
-          cd dist
+          cd scripts/build/dist
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
             FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip"
             shasum -a 256 "$FILE" > "$FILE.sha256"
@@ -127,7 +127,7 @@ jobs:
         with:
           name: ${{ matrix.platform }}-executable
           path: |
-            dist/AnnotationToolkit-${{ steps.get_version.outputs.version }}-*
+            scripts/build/dist/AnnotationToolkit-${{ steps.get_version.outputs.version }}-*
           retention-days: 7
 
   # Create GitHub Release and attach all artifacts
