@@ -5,6 +5,7 @@ This module handles loading, validating, and providing access to
 configuration settings for the annotation toolkit.
 """
 
+import copy
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -117,7 +118,7 @@ class Config:
                 If None, the default configuration will be used.
         """
         logger.debug("Initializing configuration manager")
-        self._config = self.DEFAULT_CONFIG.copy()
+        self._config = copy.deepcopy(self.DEFAULT_CONFIG)
 
         # Load configuration from file if provided
         if config_path:

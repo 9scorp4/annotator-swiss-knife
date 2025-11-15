@@ -49,6 +49,74 @@ Comprehensive error handling defined in `annotation_toolkit/utils/errors.py` and
 - **Decorators**: Use `@with_error_handling()` decorator for consistent error handling
 - **Safe Execution**: Use `safe_execute()` for exception handling with fallback values
 
+## Version Management & CI/CD
+
+### Version Numbering
+
+The project uses **setuptools-scm** for automatic version management based on git tags:
+
+- **Version source of truth:** Git tags (e.g., `v0.3.0`, `v1.0.0`)
+- **Semantic versioning:** MAJOR.MINOR.PATCH format
+- **Pre-releases:** Support for beta, rc, alpha tags (e.g., `v1.0.0-beta.1`)
+- **Development builds:** Include commit hash (e.g., `0.3.0.dev12+gabc1234`)
+
+**Check current version:**
+```bash
+python -c "from annotation_toolkit import __version__; print(__version__)"
+```
+
+### CI/CD Pipeline
+
+The project has automated CI/CD workflows in `.github/workflows/`:
+
+**Continuous Integration** (`ci.yml`):
+- Runs on every push/PR to main and develop branches
+- Multi-version Python testing (3.8-3.12)
+- Test coverage reporting with Codecov
+- Package build verification
+- Fast tests run on all branches, slow tests only on main
+
+**Continuous Deployment** (`release.yml`):
+- Triggers on git tags matching `v*.*.*`
+- Builds executables for macOS, Windows, and Linux in parallel
+- Generates SHA256 checksums for all artifacts
+- Creates GitHub Releases with auto-generated release notes
+- Attaches executables to releases
+- Supports manual triggering via workflow_dispatch
+- Detects pre-releases (beta, rc, alpha) automatically
+
+### Creating a Release
+
+See [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) for detailed instructions.
+
+**Quick release process:**
+
+```bash
+# 1. Update CHANGELOG.md with release notes
+
+# 2. Commit changes
+git add .
+git commit -m "Prepare for v1.0.0 release"
+git push origin main
+
+# 3. Create and push version tag
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+
+# GitHub Actions automatically:
+# - Builds macOS (.app), Windows (.exe), and Linux (binary) executables
+# - Creates GitHub Release
+# - Attaches executables with SHA256 checksums
+# - Generates release notes with installation instructions
+```
+
+**Pre-release example:**
+```bash
+git tag -a v1.0.0-beta.1 -m "Release version 1.0.0-beta.1"
+git push origin v1.0.0-beta.1
+# Automatically marked as pre-release on GitHub
+```
+
 ## Development Commands
 
 ### Running the Application
@@ -104,7 +172,24 @@ python -m unittest tests.core.test_dict_to_bullet
 
 ### Building Executables
 
-See `README_BUILD.md` for detailed build instructions. PyInstaller is configured in `scripts/build/`.
+**Automated Builds (Recommended):**
+Executables are automatically built via CI/CD when you create a git tag. See the "Creating a Release" section above.
+
+**Manual Local Builds:**
+You can also build executables locally for testing:
+
+```bash
+# macOS
+./scripts/build/build_mac.sh
+
+# Windows
+scripts\build\build_windows.bat
+
+# Linux
+./scripts/build/build_linux.sh
+```
+
+See `docs/README_BUILD.md` for detailed local build instructions. PyInstaller specs are in `scripts/build/`.
 
 ### Setup
 

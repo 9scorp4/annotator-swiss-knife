@@ -123,6 +123,37 @@ If you prefer to set up the application manually:
 * PyYAML (for configuration)
 * Markdown (for formatting)
 
+## Releases & Downloads
+
+### Pre-built Executables
+
+Pre-built standalone executables are available for download from the [GitHub Releases](https://github.com/9scorp4/annotator-swiss-knife/releases) page. No Python installation required!
+
+**Available Platforms:**
+- **macOS** - `.app` bundle (macOS 10.14+)
+- **Windows** - `.exe` executable (Windows 10+)
+- **Linux** - Standalone binary (Ubuntu 20.04+, other distributions may work)
+
+**Installation:**
+
+1. Go to the [latest release](https://github.com/9scorp4/annotator-swiss-knife/releases/latest)
+2. Download the appropriate file for your platform
+3. Follow the platform-specific instructions in the release notes
+
+**Security Notes:**
+- Executables are **not code-signed** and may trigger security warnings
+- SHA256 checksums are provided for verification
+- On macOS: Right-click and select "Open" to bypass Gatekeeper on first launch
+- On Windows: Click "More info" then "Run anyway" if SmartScreen appears
+
+### Installing from PyPI
+
+> **Note**: This package is not currently published to PyPI. Use the installation methods above or install from source.
+
+### Version History
+
+See the [CHANGELOG.md](CHANGELOG.md) for a detailed history of changes in each version.
+
 ## Usage
 
 ### Graphical User Interface

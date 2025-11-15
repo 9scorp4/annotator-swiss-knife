@@ -1059,7 +1059,7 @@ class JsonFixer:
                     self.fixes_applied.append(
                         f"Added empty string after colon at position {token.position}"
                     )
-                    # Don't increment i here, we still need to process the next token
+                    i += 1  # Increment to avoid infinite loop
                     continue
 
             # Add the current token

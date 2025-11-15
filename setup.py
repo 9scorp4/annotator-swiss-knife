@@ -1,42 +1,11 @@
 """
-Setup script for the Annotation Swiss Knife package.
+Minimal setup.py for backwards compatibility.
+
+All package metadata is defined in pyproject.toml (PEP 517/518).
+This file exists for compatibility with older pip versions and tools.
 """
 
-from setuptools import find_packages, setup
+from setuptools import setup
 
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
-setup(
-    name="annotation-toolkit",
-    version="0.2.0",
-    author="Nicolas Arias Garcia",
-    author_email="ariasgarnicolas@meta.com",
-    description="A comprehensive data annotation swiss knife for various annotation tasks",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/annotation-toolkit",
-    packages=find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Science/Research",
-        "Topic :: Scientific/Engineering :: Information Analysis",
-    ],
-    python_requires=">=3.8",
-    install_requires=[
-        "PyQt5>=5.15.0",
-        "pyyaml>=5.1",
-        "markdown>=3.3.0",
-    ],
-    entry_points={
-        "console_scripts": [
-            "annotation-toolkit=annotation_toolkit.cli:main",
-        ],
-    },
-)
+# All configuration is in pyproject.toml
+setup()

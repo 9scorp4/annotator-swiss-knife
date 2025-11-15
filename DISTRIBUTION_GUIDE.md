@@ -1,10 +1,81 @@
-# Distribution Guide - Google Drive Method
+# Distribution Guide
 
-## How to Share This Tool via Google Drive
+## Distribution Methods
 
-Since your team uses Google Drive as the primary cloud framework, here's the streamlined process to distribute this annotation toolkit:
+This toolkit can be distributed in multiple ways depending on your needs:
 
-## Step-by-Step Distribution Process
+1. **GitHub Releases (Recommended)** - Automated, professional distribution with pre-built executables
+2. **Google Drive** - For team sharing when GitHub is not accessible
+3. **From Source** - For developers and technical users
+
+## Method 1: GitHub Releases (Recommended)
+
+### Overview
+
+The project has an automated CI/CD pipeline that builds cross-platform executables and publishes them to GitHub Releases. This is the most professional and reliable distribution method.
+
+### For End Users (Downloading Releases)
+
+**To get the latest version:**
+
+1. Visit the [Releases page](https://github.com/9scorp4/annotator-swiss-knife/releases)
+2. Download the appropriate file for your platform:
+   - **macOS**: `AnnotationToolkit-vX.X.X-macOS.zip`
+   - **Windows**: `AnnotationToolkit-vX.X.X-Windows.exe`
+   - **Linux**: `AnnotationToolkit-vX.X.X-Linux`
+3. Verify the download using the provided SHA256 checksum
+4. Follow the platform-specific installation instructions in the release notes
+
+**Security Notes:**
+- Executables are unsigned and may trigger security warnings
+- Use the SHA256 checksums to verify file integrity
+- On macOS: Right-click and select "Open" to bypass Gatekeeper
+- On Windows: Click "More info" then "Run anyway" if SmartScreen appears
+
+### For Maintainers (Creating Releases)
+
+See [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) for complete release instructions.
+
+**Quick release process:**
+
+```bash
+# 1. Update CHANGELOG.md
+# 2. Commit changes
+git commit -am "Prepare for v1.0.0 release"
+git push origin main
+
+# 3. Create and push tag
+git tag -a v1.0.0 -m "Release version 1.0.0"
+git push origin v1.0.0
+
+# GitHub Actions automatically:
+# - Builds macOS, Windows, and Linux executables
+# - Creates GitHub Release
+# - Attaches executables with checksums
+```
+
+### Benefits of GitHub Releases
+
+✅ **Automated**: No manual building required
+✅ **Consistent**: Same build process every time
+✅ **Cross-platform**: macOS, Windows, and Linux
+✅ **Verified**: SHA256 checksums for all downloads
+✅ **Versioned**: Clear version history with CHANGELOG
+✅ **Professional**: Clean download page with instructions
+
+## Method 2: Google Drive (Team Sharing)
+
+> **Note**: Google Drive is useful when team members don't have GitHub access or prefer direct downloads. For public releases, use GitHub Releases (Method 1).
+
+### When to Use Google Drive
+
+Use this method when:
+- Team members don't have GitHub access
+- You need to share with non-technical users
+- You're in an environment where GitHub is blocked
+- You want to provide pre-release builds for testing
+
+### Step-by-Step Distribution Process
 
 ### 1. Create the Distribution Package
 
@@ -47,9 +118,16 @@ Hi team,
 
 I've created a simple annotation toolkit that might be useful for our data processing tasks.
 
-📥 Download: [Google Drive Link]
-📖 Setup Guide: See USER_SETUP_GUIDE.md in the zip file
-🚀 Quick Start: See QUICK_START_CARD.md for instant commands
+📥 **Download Options:**
+- **GitHub Releases (Recommended)**: https://github.com/9scorp4/annotator-swiss-knife/releases/latest
+  - Pre-built executables for macOS, Windows, and Linux
+  - No Python installation required
+  - SHA256 checksums for verification
+
+- **Google Drive (Source Code)**: [Google Drive Link]
+  - Requires Python 3.8+
+  - Setup Guide: See USER_SETUP_GUIDE.md in the zip file
+  - Quick Start: See QUICK_START_CARD.md for instant commands
 
 Features:
 - Dictionary to Bullet List conversion

@@ -1,0 +1,160 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "annotation-toolkit"
+dynamic = ["version"]
+description = "A comprehensive data annotation swiss knife for various annotation tasks"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+    {name = "Nicolas Arias Garcia", email = "nicolas@anthropos-ai.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = [
+    "PyQt5>=5.15.0",
+    "pyyaml>=5.1.0",
+    "markdown>=3.3.0",
+    "ijson>=3.1.0",
+    "chardet>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=6.0.0",
+    "pytest-cov>=2.10.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-xdist>=3.0.0",  # parallel test execution
+]
+build = [
+    "pyinstaller>=5.6.0",
+]
+
+[project.scripts]
+annotation-toolkit = "annotation_toolkit.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/9scorp4/annotator-swiss-knife"
+Repository = "https://github.com/9scorp4/annotator-swiss-knife"
+Issues = "https://github.com/9scorp4/annotator-swiss-knife/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["annotation_toolkit*"]
+exclude = ["tests*"]
+
+# ==================== Pytest Configuration ====================
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Pytest markers for test categorization
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "fast: marks tests as fast (select with '-m fast')",
+    "fixer: JSON fixer tests that are resource-intensive",
+    "integration: integration tests",
+    "unit: unit tests",
+]
+
+# Default options for pytest
+addopts = [
+    "-ra",                          # show summary of all test outcomes
+    "--strict-markers",             # error on unknown markers
+    "--strict-config",              # error on unknown config
+    "--showlocals",                 # show local variables in tracebacks
+    "--tb=short",                   # shorter traceback format
+    "-v",                           # verbose output
+]
+
+# Timeout settings (requires pytest-timeout)
+timeout = 300                       # 5 minute global timeout
+timeout_method = "thread"
+
+# Parallel execution settings (requires pytest-xdist)
+# Uncomment to enable parallel execution:
+# addopts = ["-n", "auto"]         # auto-detect number of CPUs
+
+# ==================== Coverage Configuration ====================
+[tool.coverage.run]
+source = ["annotation_toolkit"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    # GUI code - hard to test in CI
+    "annotation_toolkit/ui/gui/*",
+    # Infrastructure modules at 0% - not critical
+    "annotation_toolkit/utils/recovery.py",
+    "annotation_toolkit/utils/resources.py",
+    "annotation_toolkit/utils/validation.py",
+    "annotation_toolkit/utils/structured_logging.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@abc.abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# ==================== Test Execution Profiles ====================
+# Use these with: pytest -m <marker>
+
+# Fast tests only (for rapid feedback during development)
+# pytest -m "not slow"
+# Expected time: < 2 minutes
+# Coverage: ~50-60%
+
+# Full test suite (for CI/CD, pre-commit)
+# pytest
+# Expected time: < 5 minutes
+# Coverage: ~60-70%
+
+# Only slow tests (for comprehensive validation)
+# pytest -m slow
+# Expected time: 2-3 minutes
+# Includes: json_fixer tests
+
+# Parallel execution (fastest, requires pytest-xdist)
+# pytest -n auto -m "not slow"
+# Expected time: < 1 minute
+
+# ==================== Version Management ====================
+[tool.setuptools_scm]
+# Automatically derive version from git tags
+# Tags should follow semantic versioning: v0.3.0, v1.0.0, etc.
+version_scheme = "post-release"
+local_scheme = "no-local-version"
+write_to = "annotation_toolkit/_version.py"
+write_to_template = "__version__ = '{version}'\n"

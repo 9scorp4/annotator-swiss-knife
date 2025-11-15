@@ -9,4 +9,17 @@ Features:
 - Conversation Visualizer: Visualize and format conversation data from JSON or text formats
 """
 
-__version__ = "0.1.0"
+# Version is managed by setuptools-scm and derived from git tags
+try:
+    from ._version import __version__
+except ImportError:
+    # Fallback for development environments without proper installation
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+        try:
+            __version__ = version("annotation-toolkit")
+        except PackageNotFoundError:
+            __version__ = "0.0.0.dev0"
+    except ImportError:
+        # Python < 3.8 fallback
+        __version__ = "0.0.0.dev0"

@@ -1,0 +1,240 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v0.3.0, v1.0.0
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v0.3.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Required for creating releases
+
+jobs:
+  # Build executables for all platforms
+  build-executables:
+    name: Build ${{ matrix.os }} executable
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: AnnotationToolkit.app
+            artifact_path: dist/AnnotationToolkit.app
+            build_spec: mac_build.spec
+            platform: macOS
+          - os: windows-latest
+            artifact_name: AnnotationToolkit.exe
+            artifact_path: dist/AnnotationToolkit.exe
+            build_spec: windows_build.spec
+            platform: Windows
+          - os: ubuntu-latest
+            artifact_name: AnnotationToolkit-linux
+            artifact_path: dist/AnnotationToolkit
+            build_spec: linux_build.spec
+            platform: Linux
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for setuptools-scm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install package in editable mode
+        run: |
+          pip install -e .
+
+      - name: Get version from tag
+        id: get_version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Verify version matches
+        shell: bash
+        run: |
+          PACKAGE_VERSION=$(python -c "from annotation_toolkit import __version__; print(__version__)")
+          TAG_VERSION="${{ steps.get_version.outputs.version_number }}"
+          echo "Package version: $PACKAGE_VERSION"
+          echo "Tag version: $TAG_VERSION"
+          # Allow some flexibility for dev builds
+          if [[ ! "$PACKAGE_VERSION" =~ ^$TAG_VERSION ]]; then
+            echo "Warning: Version mismatch between tag and package"
+          fi
+
+      - name: Build ${{ matrix.platform }} executable
+        working-directory: scripts/build
+        run: |
+          pyinstaller ${{ matrix.build_spec }} --clean --noconfirm
+
+      - name: Create archive (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          zip -r AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip AnnotationToolkit.app
+
+      - name: Rename executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd dist
+          Copy-Item AnnotationToolkit.exe AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe
+
+      - name: Rename executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd dist
+          cp AnnotationToolkit AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux
+          chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip"
+            shasum -a 256 "$FILE" > "$FILE.sha256"
+          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+            FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe"
+            sha256sum "$FILE" > "$FILE.sha256" || certutil -hashfile "$FILE" SHA256 > "$FILE.sha256"
+          else
+            FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux"
+            sha256sum "$FILE" > "$FILE.sha256"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-executable
+          path: |
+            dist/AnnotationToolkit-${{ steps.get_version.outputs.version }}-*
+          retention-days: 7
+
+  # Create GitHub Release and attach all artifacts
+  create-release:
+    name: Create GitHub Release
+    needs: build-executables
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R release-artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find release-artifacts -type f -name "AnnotationToolkit-*" -exec cp {} release-files/ \;
+          ls -lh release-files/
+
+      - name: Check if pre-release
+        id: prerelease
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          if [[ "$VERSION" =~ (alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          cat > release_notes.md << 'EOF'
+          ## 🎉 Annotation Toolkit ${{ steps.get_version.outputs.version }}
+
+          ### 📦 Downloads
+
+          Choose the appropriate download for your platform:
+
+          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip`
+          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe`
+          - **Linux**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux`
+
+          ### 🔐 Verification
+
+          SHA256 checksums are provided for each download (`.sha256` files).
+
+          ### 📝 Installation
+
+          **macOS**:
+          1. Download and extract the ZIP file
+          2. Move `AnnotationToolkit.app` to your Applications folder
+          3. Right-click and select "Open" to bypass Gatekeeper on first launch
+
+          **Windows**:
+          1. Download the `.exe` file
+          2. Double-click to run
+          3. You may see a SmartScreen warning - click "More info" then "Run anyway"
+
+          **Linux**:
+          1. Download the executable
+          2. Make it executable: `chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux`
+          3. Run: `./AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux`
+
+          ### ⚠️ Security Notes
+
+          These executables are **not code-signed**. You may see security warnings from your operating system. This is expected for unsigned applications.
+
+          ### 🐍 Python Package
+
+          You can also install via pip:
+          ```bash
+          pip install git+https://github.com/${{ github.repository }}.git@${{ steps.get_version.outputs.version }}
+          ```
+
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          files: |
+            release-files/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

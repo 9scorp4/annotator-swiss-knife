@@ -1,6 +1,8 @@
 # Building Annotation Toolkit Executables
 
-This guide explains how to build standalone executables for the Annotation Toolkit application for both macOS and Windows.
+This guide explains how to build standalone executables for the Annotation Toolkit application locally for development and testing.
+
+> **Note**: For official releases, executables are automatically built via CI/CD when creating git tags. See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for the automated release process.
 
 ## Prerequisites
 
@@ -8,7 +10,20 @@ This guide explains how to build standalone executables for the Annotation Toolk
 - pip (Python package installer)
 - Git (to clone the repository)
 
-## Building on macOS
+## Automated Builds (Recommended for Releases)
+
+The project includes a CI/CD pipeline that automatically builds executables for all platforms when you create a release tag:
+
+1. Create a git tag: `git tag -a v1.0.0 -m "Release version 1.0.0"`
+2. Push the tag: `git push origin v1.0.0`
+3. GitHub Actions builds executables for macOS, Windows, and Linux
+4. Executables are attached to the GitHub Release
+
+See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for complete instructions.
+
+## Manual Local Builds (For Development/Testing)
+
+### Building on macOS
 
 1. Open Terminal
 2. Navigate to the project directory:
@@ -50,6 +65,33 @@ This guide explains how to build standalone executables for the Annotation Toolk
 
 **Note:** If Windows SmartScreen prevents the app from running, click "More info" and then "Run anyway".
 
+## Building on Linux
+
+1. Open Terminal
+2. Navigate to the project directory:
+   ```
+   cd /path/to/annotator_swiss_knife
+   ```
+3. Make the build script executable:
+   ```
+   chmod +x scripts/build/build_linux.sh
+   ```
+4. Run the build script:
+   ```
+   ./scripts/build/build_linux.sh
+   ```
+5. Once the build is complete, you can find the executable at:
+   ```
+   dist/AnnotationToolkit
+   ```
+6. To run the application:
+   ```
+   chmod +x dist/AnnotationToolkit
+   ./dist/AnnotationToolkit
+   ```
+
+**Note:** The Linux executable is built as a standalone binary and may require additional system libraries depending on your distribution.
+
 ## Troubleshooting
 
 ### Common Issues on macOS
@@ -70,11 +112,35 @@ If you need to customize the build process, you can modify the following files:
 
 - `scripts/build/mac_build.spec`: PyInstaller specification file for macOS
 - `scripts/build/windows_build.spec`: PyInstaller specification file for Windows
+- `scripts/build/linux_build.spec`: PyInstaller specification file for Linux
 - `scripts/build/file_version_info.txt`: Version information for the Windows executable
+
+**Note:** Version numbers are now automatically derived from git tags using setuptools-scm. The spec files read the version dynamically from the package.
 
 ## Distribution
 
-After building the executables, you can distribute them to users:
+### Automated Distribution (Recommended)
 
-- For macOS, you can create a DMG file or zip the .app file
-- For Windows, you can create an installer using tools like NSIS or Inno Setup, or simply zip the executable and its dependencies
+The recommended way to distribute executables is through GitHub Releases:
+
+1. Follow the release process in [RELEASE_PROCESS.md](RELEASE_PROCESS.md)
+2. Create a git tag (e.g., `v1.0.0`)
+3. Push the tag to GitHub
+4. GitHub Actions automatically builds and publishes executables
+5. Users download from the [Releases page](https://github.com/9scorp4/annotator-swiss-knife/releases)
+
+This ensures:
+- Consistent builds across all platforms
+- Automatic version numbering
+- SHA256 checksums for verification
+- Proper release notes and documentation
+
+### Manual Distribution
+
+If you've built executables locally, you can distribute them manually:
+
+- **macOS:** Create a DMG file or zip the .app bundle
+- **Windows:** Create an installer using tools like NSIS or Inno Setup, or zip the .exe file
+- **Linux:** Create a .tar.gz archive or AppImage
+
+**Security Note:** Manually distributed executables are unsigned and will trigger security warnings. For production releases, use the automated GitHub Releases process.

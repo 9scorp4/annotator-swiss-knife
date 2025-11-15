@@ -123,7 +123,9 @@ class PathValidator:
                 if current_path.exists() and current_path.is_symlink():
                     # Get the target of the symlink
                     try:
-                        target = current_path.readlink()
+                        # Use os.readlink for Python 3.8 compatibility
+                        # (Path.readlink() was added in Python 3.9)
+                        target = Path(os.readlink(str(current_path)))
                         if not target.is_absolute():
                             target = current_path.parent / target
                         current_path = target

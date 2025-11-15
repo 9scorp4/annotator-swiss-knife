@@ -42,6 +42,7 @@ class ErrorCode(Enum):
     TYPE_ERROR = 2002
     VALUE_ERROR = 2003
     FORMAT_ERROR = 2004
+    VALIDATION_ERROR = 2005
 
     # Processing errors (3000-3999)
     PROCESSING_ERROR = 3000
@@ -525,6 +526,25 @@ class FileWriteError(IOError):
             ErrorCode.FILE_WRITE_ERROR,
             details,
             suggestion or "Check file permissions and available disk space.",
+            cause,
+        )
+
+
+class ResourceError(IOError):
+    """Exception raised when a resource operation fails."""
+
+    def __init__(
+        self,
+        message: str,
+        details: Optional[Dict[str, Any]] = None,
+        suggestion: Optional[str] = None,
+        cause: Optional[Exception] = None,
+    ):
+        super().__init__(
+            message,
+            ErrorCode.PROCESSING_ERROR,
+            details,
+            suggestion or "Ensure the resource is properly managed and not already disposed.",
             cause,
         )
 
