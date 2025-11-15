@@ -152,6 +152,20 @@ jobs:
           cd scripts/build
           bash build_appimage.sh
 
+      - name: Rename AppImage to match release version
+        if: matrix.platform == 'Linux'
+        run: |
+          cd dist
+          VERSION="${{ steps.get_version.outputs.version }}"
+          # Find the AppImage file (format: AnnotationToolkit-*-x86_64.AppImage)
+          APPIMAGE=$(ls AnnotationToolkit-*-x86_64.AppImage 2>/dev/null || true)
+          if [ -n "$APPIMAGE" ]; then
+            mv "$APPIMAGE" "AnnotationToolkit-${VERSION}-x86_64.AppImage"
+            echo "Renamed AppImage to: AnnotationToolkit-${VERSION}-x86_64.AppImage"
+          else
+            echo "Warning: AppImage not found"
+          fi
+
       - name: Create Linux debug archive
         if: matrix.platform == 'Linux'
         run: |
