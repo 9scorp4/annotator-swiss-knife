@@ -27,7 +27,7 @@ A comprehensive yet simple toolkit designed to streamline various data annotatio
 
 ### Using Setup Scripts (Recommended)
 
-This application comes with setup scripts that automate the installation process, including creating a virtual environment and installing all dependencies. **This is the recommended approach for Meta managed devices** as it runs from source and doesn't require executable signing.
+This application comes with setup scripts that automate the installation process, including creating a virtual environment and installing all dependencies. **This is the recommended approach for corporate managed devices** as it runs from source and doesn't require executable signing.
 
 #### On macOS/Linux:
 

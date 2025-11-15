@@ -186,15 +186,14 @@ Team Tools/
 
 ## Security Considerations
 
-✅ **Safe for Meta Devices:**
+✅ **Safe for Corporate Devices:**
 - Runs from source code (no unsigned executables)
 - Uses standard Python libraries
 - No network access required
 - No sensitive data handling
 
-✅ **Google Drive Compliant:**
-- Approved cloud storage at Meta
-- Works within Contingent Worker access limitations
+✅ **Cloud Storage Compliant:**
+- Uses approved cloud storage platforms
 - Maintains audit trail of downloads
 - Easy permission management
 

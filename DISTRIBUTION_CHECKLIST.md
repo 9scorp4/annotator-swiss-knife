@@ -133,7 +133,7 @@ See [DISTRIBUTION_GUIDE.md](DISTRIBUTION_GUIDE.md) for detailed instructions on 
 
 - [X] **USER_SETUP_GUIDE.md** is complete and accurate
 - [X] **QUICK_START_CARD.md** has correct commands
-- [ ] **README.md** mentions Meta device compatibility
+- [ ] **README.md** mentions corporate device compatibility
 - [ ] All file paths in documentation are correct
 
 ### ✅ **Files to Include in Distribution**
@@ -170,7 +170,7 @@ Optional but recommended:
 ### ✅ **Sharing Method**
 
 Choose your distribution method:
-- [ ] **SharePoint/OneDrive** (recommended for Meta)
+- [ ] **SharePoint/OneDrive** (enterprise cloud storage)
 - [ ] **Google Drive** (if available)
 - [ ] **Workplace post** with file attachment
 - [ ] **Email** (for small teams)
@@ -205,7 +205,7 @@ Choose your distribution method:
   ```
 
 - [ ] **Include troubleshooting contact info**
-- [ ] **Mention it works on Meta managed devices**
+- [ ] **Mention it works on corporate managed devices**
 
 ### ✅ **Post-Distribution**
 

@@ -8,7 +8,7 @@ This guide will help you extract, set up, and run the Annotation Swiss Knife too
 
 ## 📋 Prerequisites
 
-- **Python 3.8 or higher** (usually pre-installed on Meta devices)
+- **Python 3.8 or higher** (usually pre-installed on managed devices)
 - **Terminal/Command Prompt access**
 - **No admin privileges required**
 
@@ -253,4 +253,4 @@ When you receive an updated version:
 
 ---
 
-*This tool runs entirely from source code and doesn't require installation or admin privileges. It's designed to work seamlessly on Meta managed devices.*
+*This tool runs entirely from source code and doesn't require installation or admin privileges. It's designed to work seamlessly on corporate managed devices.*

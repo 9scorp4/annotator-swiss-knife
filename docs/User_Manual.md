@@ -38,7 +38,7 @@ This toolkit is designed for:
 - Researchers working with conversational data
 - Developers cleaning and formatting text data
 - Anyone working with JSON data visualization
-- Meta employees working on annotation tasks
+- Teams working on annotation tasks
 
 ---
 
@@ -46,13 +46,13 @@ This toolkit is designed for:
 
 ### Prerequisites
 
-- **Python 3.8 or higher** (usually pre-installed on Meta devices)
+- **Python 3.8 or higher** (usually pre-installed on managed devices)
 - **Terminal/Command Prompt access**
 - **No administrator privileges required**
 
 ### Recommended Installation Method (Using Setup Scripts)
 
-The application comes with automated setup scripts that create a virtual environment and install all dependencies. This is the recommended approach, especially for Meta managed devices.
+The application comes with automated setup scripts that create a virtual environment and install all dependencies. This is the recommended approach, especially for corporate managed devices.
 
 #### macOS/Linux
 
