@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
+# DEBUG BUILD - This spec file creates a debug build with console output enabled
 import os
 import sys
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 # Get the absolute path to the project root directory
 # When running as a spec file, we need to use a different approach
@@ -24,37 +24,13 @@ try:
 except ImportError:
     version = "0.0.0.dev0"
 
-# Collect Qt5 plugins for Windows
-# These are critical for PyQt5 GUI to work properly
-qt5_plugins_datas = []
-try:
-    from PyQt5 import QtCore
-    qt_plugin_path = os.path.join(os.path.dirname(QtCore.__file__), 'Qt5', 'plugins')
-    if os.path.exists(qt_plugin_path):
-        # Add platform plugins (required for GUI to start)
-        platforms_dir = os.path.join(qt_plugin_path, 'platforms')
-        if os.path.exists(platforms_dir):
-            qt5_plugins_datas.append((platforms_dir, 'PyQt5/Qt5/plugins/platforms'))
-
-        # Add styles plugins (for consistent UI appearance)
-        styles_dir = os.path.join(qt_plugin_path, 'styles')
-        if os.path.exists(styles_dir):
-            qt5_plugins_datas.append((styles_dir, 'PyQt5/Qt5/plugins/styles'))
-
-        # Add imageformats plugins (for image support)
-        imageformats_dir = os.path.join(qt_plugin_path, 'imageformats')
-        if os.path.exists(imageformats_dir):
-            qt5_plugins_datas.append((imageformats_dir, 'PyQt5/Qt5/plugins/imageformats'))
-except ImportError:
-    print("Warning: Could not locate Qt5 plugins. GUI may not work correctly.")
-
 block_cipher = None
 
 a = Analysis(
     ['build_app.py'],
     pathex=[project_root],
     binaries=[],
-    datas=qt5_plugins_datas,
+    datas=[],
     hiddenimports=[
         'PyQt5',
         'PyQt5.QtCore',
@@ -91,21 +67,18 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AnnotationToolkit',
+    name='AnnotationToolkit-Debug',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
-    argv_emulation=False,
+    argv_emulation=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=None,
-    version=os.path.join(current_dir, 'file_version_info.txt') if os.path.exists(os.path.join(current_dir, 'file_version_info.txt')) else None,
 )
 
 coll = COLLECT(
@@ -116,5 +89,18 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='AnnotationToolkit',
+    name='AnnotationToolkit-Debug',
+)
+
+app = BUNDLE(
+    coll,
+    name='AnnotationToolkit-Debug.app',
+    icon=None,
+    bundle_identifier='com.meta.annotationtoolkit.debug',
+    info_plist={
+        'NSHighResolutionCapable': 'True',
+        'CFBundleShortVersionString': version,
+        'CFBundleVersion': version,
+        'NSHumanReadableCopyright': '© 2025 Nicolas Arias Garcia',
+    },
 )

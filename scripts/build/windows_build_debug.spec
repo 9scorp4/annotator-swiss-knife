@@ -1,4 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
+# DEBUG BUILD - This spec file creates a debug build with console output enabled
 import os
 import sys
 from pathlib import Path
@@ -91,14 +92,14 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AnnotationToolkit',
+    name='AnnotationToolkit-Debug',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -116,5 +117,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='AnnotationToolkit',
+    name='AnnotationToolkit-Debug',
 )

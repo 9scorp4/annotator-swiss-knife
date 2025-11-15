@@ -37,18 +37,48 @@ if ! pip show pyinstaller &> /dev/null; then
     pip install pyinstaller
 fi
 
-# Build the executable
-echo "Building macOS executable..."
+# Build the release executable
+echo "Building macOS executable (Release)..."
 # Use the spec file in the same directory as the script
-pyinstaller "$SCRIPT_DIR/mac_build.spec"
+cd "$SCRIPT_DIR"
+# Calculate the path to the project root's dist directory
+DIST_DIR="$SCRIPT_DIR/../../dist"
+pyinstaller "mac_build.spec" --distpath "$DIST_DIR" --clean --noconfirm
+
+# Build the debug executable
+echo ""
+echo "Building macOS executable (Debug)..."
+pyinstaller "mac_build_debug.spec" --distpath "$DIST_DIR" --clean --noconfirm
+
+# Get version from package
+cd "$SCRIPT_DIR/../.."
+VERSION=$(python3 -c "from annotation_toolkit import __version__; print(__version__)" 2>/dev/null || echo "0.0.0.dev0")
+echo "Version: $VERSION"
+
+# Create zip archives for distribution
+echo ""
+echo "Creating release archive..."
+cd "$SCRIPT_DIR/../../dist"
+if [ -d "AnnotationToolkit.app" ]; then
+    zip -r -q "AnnotationToolkit-${VERSION}-macOS-release.zip" "AnnotationToolkit.app"
+    echo "Created: AnnotationToolkit-${VERSION}-macOS-release.zip"
+fi
+
+echo "Creating debug archive..."
+if [ -d "AnnotationToolkit-Debug.app" ]; then
+    zip -r -q "AnnotationToolkit-${VERSION}-macOS-debug.zip" "AnnotationToolkit-Debug.app"
+    echo "Created: AnnotationToolkit-${VERSION}-macOS-debug.zip"
+fi
 
 echo ""
 echo "=== Build Complete ==="
 echo ""
-echo "The macOS application has been built successfully!"
-echo "You can find the application at: dist/AnnotationToolkit.app"
+echo "The macOS applications have been built successfully!"
 echo ""
-echo "To run the application, double-click on the AnnotationToolkit.app file."
+echo "Release build: dist/AnnotationToolkit-${VERSION}-macOS-release.zip"
+echo "Debug build:   dist/AnnotationToolkit-${VERSION}-macOS-debug.zip"
+echo ""
+echo "To run the application, extract the zip and double-click the .app file."
 echo ""
 echo "Note: If you get a security warning when trying to open the app,"
 echo "go to System Preferences > Security & Privacy and click 'Open Anyway'."

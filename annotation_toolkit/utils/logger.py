@@ -36,7 +36,8 @@ class Logger:
 
         Args:
             log_dir (str, optional): Directory where log files will be stored.
-                If None, logs will be stored in a 'logs' directory in the current working directory.
+                If None, logs will be stored in a 'logs' directory in the user's home directory
+                or temp directory (if home is not writable, e.g., in AppImage).
             log_level (int, optional): Logging level. Defaults to logging.INFO.
         """
         # Only initialize once (singleton pattern)
@@ -45,13 +46,28 @@ class Logger:
 
         # Set up log directory
         if log_dir is None:
-            # Default to a 'logs' directory in the current working directory
-            self.log_dir = os.path.join(os.getcwd(), "logs")
+            # Try to use user's config directory first (cross-platform)
+            # Falls back to temp directory if that fails (e.g., in read-only AppImage)
+            try:
+                # Use XDG_CONFIG_HOME on Linux, AppData on Windows, Application Support on macOS
+                if os.name == 'posix':
+                    config_home = os.environ.get('XDG_CONFIG_HOME', os.path.join(Path.home(), '.config'))
+                    self.log_dir = os.path.join(config_home, 'annotation-toolkit', 'logs')
+                else:
+                    # Windows: use LOCALAPPDATA
+                    self.log_dir = os.path.join(os.environ.get('LOCALAPPDATA', Path.home()), 'AnnotationToolkit', 'logs')
+
+                # Test if we can write to this directory
+                os.makedirs(self.log_dir, exist_ok=True)
+            except (OSError, PermissionError):
+                # Fallback to temp directory if home directory is not writable
+                import tempfile
+                self.log_dir = os.path.join(tempfile.gettempdir(), 'annotation-toolkit', 'logs')
+                os.makedirs(self.log_dir, exist_ok=True)
         else:
             self.log_dir = log_dir
-
-        # Create log directory if it doesn't exist
-        os.makedirs(self.log_dir, exist_ok=True)
+            # Create log directory if it doesn't exist
+            os.makedirs(self.log_dir, exist_ok=True)
 
         # Generate log filename based on current date and time
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")

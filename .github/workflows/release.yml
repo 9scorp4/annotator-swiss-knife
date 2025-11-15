@@ -17,25 +17,16 @@ permissions:
 jobs:
   # Build executables for all platforms
   build-executables:
-    name: Build ${{ matrix.os }} executable
+    name: Build ${{ matrix.platform }} executable
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: macos-latest
-            artifact_name: AnnotationToolkit.app
-            artifact_path: dist/AnnotationToolkit.app
-            build_spec: mac_build.spec
             platform: macOS
           - os: windows-latest
-            artifact_name: AnnotationToolkit.exe
-            artifact_path: dist/AnnotationToolkit.exe
-            build_spec: windows_build.spec
             platform: Windows
           - os: ubuntu-latest
-            artifact_name: AnnotationToolkit-linux
-            artifact_path: dist/AnnotationToolkit
-            build_spec: linux_build.spec
             platform: Linux
 
     steps:
@@ -83,51 +74,88 @@ jobs:
             echo "Warning: Version mismatch between tag and package"
           fi
 
-      - name: Build ${{ matrix.platform }} executable
+      # macOS Build
+      - name: Build macOS executables (Release + Debug)
+        if: matrix.os == 'macos-latest'
         working-directory: scripts/build
         run: |
-          pyinstaller ${{ matrix.build_spec }} --clean --noconfirm
+          pyinstaller mac_build.spec --distpath ../../dist --clean --noconfirm
+          pyinstaller mac_build_debug.spec --distpath ../../dist --clean --noconfirm
 
-      - name: Create archive (macOS)
+      - name: Create macOS archives
         if: matrix.os == 'macos-latest'
         run: |
-          cd scripts/build/dist
-          zip -r AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip AnnotationToolkit.app
+          cd dist
+          VERSION="${{ steps.get_version.outputs.version }}"
+          zip -r -q "AnnotationToolkit-${VERSION}-macOS-release.zip" AnnotationToolkit.app
+          zip -r -q "AnnotationToolkit-${VERSION}-macOS-debug.zip" AnnotationToolkit-Debug.app
 
-      - name: Rename executable (Windows)
+      # Windows Build
+      - name: Build Windows executables (Release + Debug)
         if: matrix.os == 'windows-latest'
+        working-directory: scripts/build
         run: |
-          cd scripts/build/dist
-          Copy-Item AnnotationToolkit.exe AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe
+          pyinstaller windows_build.spec --distpath ../../dist --clean --noconfirm
+          pyinstaller windows_build_debug.spec --distpath ../../dist --clean --noconfirm
 
-      - name: Rename executable (Linux)
+      - name: Create Windows archives
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd dist
+          $VERSION = "${{ steps.get_version.outputs.version }}"
+          Compress-Archive -Path "AnnotationToolkit" -DestinationPath "AnnotationToolkit-${VERSION}-Windows-release.zip" -Force
+          Compress-Archive -Path "AnnotationToolkit-Debug" -DestinationPath "AnnotationToolkit-${VERSION}-Windows-debug.zip" -Force
+
+      # Linux Build
+      - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cd scripts/build/dist
-          cp AnnotationToolkit AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux
-          chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux
+          sudo apt-get update
+          sudo apt-get install -y wget fuse libfuse2 imagemagick
 
+      - name: Build Linux debug executable
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: scripts/build
+        run: |
+          pyinstaller linux_build_debug.spec --distpath ../../dist --clean --noconfirm
+          chmod +x ../../dist/AnnotationToolkit-Debug/AnnotationToolkit-Debug
+
+      - name: Build Linux AppImage (Release)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd scripts/build
+          bash build_appimage.sh
+
+      - name: Create Linux debug archive
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd dist
+          VERSION="${{ steps.get_version.outputs.version }}"
+          tar czf "AnnotationToolkit-${VERSION}-Linux-debug.tar.gz" AnnotationToolkit-Debug/
+
+      # Generate checksums for all platforms
       - name: Generate checksums
         shell: bash
         run: |
-          cd scripts/build/dist
-          if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip"
-            shasum -a 256 "$FILE" > "$FILE.sha256"
-          elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-            FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe"
-            sha256sum "$FILE" > "$FILE.sha256" || certutil -hashfile "$FILE" SHA256 > "$FILE.sha256"
-          else
-            FILE="AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux"
-            sha256sum "$FILE" > "$FILE.sha256"
-          fi
+          cd dist
+          for file in AnnotationToolkit-${{ steps.get_version.outputs.version }}-*; do
+            if [ -f "$file" ]; then
+              if command -v sha256sum &> /dev/null; then
+                sha256sum "$file" > "$file.sha256"
+              else
+                shasum -a 256 "$file" > "$file.sha256"
+              fi
+              echo "Generated checksum for: $file"
+            fi
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform }}-executable
+          name: ${{ matrix.platform }}-executables
           path: |
-            scripts/build/dist/AnnotationToolkit-${{ steps.get_version.outputs.version }}-*
+            dist/AnnotationToolkit-${{ steps.get_version.outputs.version }}-*
           retention-days: 7
 
   # Create GitHub Release and attach all artifacts
@@ -186,11 +214,17 @@ jobs:
 
           ### 📦 Downloads
 
-          Choose the appropriate download for your platform:
+          This release includes both **release** and **debug** builds for each platform.
 
-          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip`
-          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.exe`
-          - **Linux**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux`
+          **Release builds** (recommended for most users):
+          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS-release.zip`
+          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows-release.zip`
+          - **Linux**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
+
+          **Debug builds** (for troubleshooting - shows console output):
+          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS-debug.zip`
+          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows-debug.zip`
+          - **Linux**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux-debug.tar.gz`
 
           ### 🔐 Verification
 
@@ -200,22 +234,46 @@ jobs:
 
           **macOS**:
           1. Download and extract the ZIP file
-          2. Move `AnnotationToolkit.app` to your Applications folder
+          2. Move `AnnotationToolkit.app` (or `AnnotationToolkit-Debug.app`) to your Applications folder
           3. Right-click and select "Open" to bypass Gatekeeper on first launch
 
           **Windows**:
-          1. Download the `.exe` file
-          2. Double-click to run
+          1. Download and extract the ZIP file
+          2. Run `AnnotationToolkit.exe` (or `AnnotationToolkit-Debug.exe`)
           3. You may see a SmartScreen warning - click "More info" then "Run anyway"
 
           **Linux**:
-          1. Download the executable
-          2. Make it executable: `chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux`
-          3. Run: `./AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux`
+
+          *Release (AppImage)*:
+          1. Download the `.AppImage` file
+          2. Make it executable: `chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
+          3. Run: `./AnnotationToolkit-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
+
+          *Debug (tar.gz)*:
+          1. Download and extract: `tar xzf AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux-debug.tar.gz`
+          2. Run: `cd AnnotationToolkit-Debug && ./AnnotationToolkit-Debug`
+
+          ### 🐛 Debug Builds
+
+          Debug builds include console output that can help diagnose issues:
+          - Shows error messages and warnings
+          - Displays Qt plugin loading information
+          - Helpful for troubleshooting startup problems
+
+          Use debug builds if you encounter issues with the release version.
 
           ### ⚠️ Security Notes
 
           These executables are **not code-signed**. You may see security warnings from your operating system. This is expected for unsigned applications.
+
+          ### 🔧 Build Improvements
+
+          This release includes significant improvements to the build system:
+          - ✅ Fixed Qt platform plugin issues on Linux and Windows
+          - ✅ Disabled UPX compression for better compatibility
+          - ✅ Linux AppImage format for better portability
+          - ✅ Windows onedir format with all dependencies included
+          - ✅ Both release and debug builds available
 
           ### 🐍 Python Package
 

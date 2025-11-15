@@ -30,14 +30,26 @@ if not json_fixer_logger.handlers:
 
     # Add a file handler to save detailed logs
     try:
-        # First try the project logs directory
-        project_logs_dir = Path(
-            "/Users/ariasgarnicolas/Documents/annotator_swiss_knife/logs"
-        )
-        if not project_logs_dir.exists():
+        # Use user's config directory (cross-platform, works in AppImage)
+        import os
+        import tempfile
+
+        try:
+            # Try user's config directory first
+            if os.name == 'posix':
+                config_home = os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))
+                project_logs_dir = Path(config_home) / 'annotation-toolkit' / 'logs'
+            else:
+                # Windows: use LOCALAPPDATA
+                project_logs_dir = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'AnnotationToolkit' / 'logs'
+
+            project_logs_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            # Fallback to temp directory if home is not writable
+            project_logs_dir = Path(tempfile.gettempdir()) / 'annotation-toolkit' / 'logs'
             project_logs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create a file handler for JSON fixing logs in the project directory
+        # Create a file handler for JSON fixing logs
         json_log_file = project_logs_dir / "json_fixer.log"
 
         file_handler = logging.FileHandler(json_log_file, mode="a")
