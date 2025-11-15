@@ -100,7 +100,7 @@ See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for complete instructions.
   - **Solution 1**: Use the AppImage release build (recommended) - it's more portable
   - **Solution 2**: Check your GLIBC version with `ldd --version`
   - **Solution 3**: Use the Python package instead: `pip install annotation-toolkit`
-  - The CI/CD builds use Ubuntu 20.04 (GLIBC 2.31) for better compatibility
+  - The CI/CD builds use Ubuntu 22.04 with system Python (GLIBC 2.35) for better compatibility
 
 - **Qt platform plugin errors**: If you see "Could not find the Qt platform plugin", make sure you have the required X11 libraries installed:
   ```bash

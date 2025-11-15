@@ -24,10 +24,13 @@ jobs:
         include:
           - os: macos-latest
             platform: macOS
+            python-version: '3.11'
           - os: windows-latest
             platform: Windows
-          - os: ubuntu-20.04
+            python-version: '3.11'
+          - os: ubuntu-22.04
             platform: Linux
+            python-version: 'system'
 
     steps:
       - name: Checkout code
@@ -36,19 +39,37 @@ jobs:
           fetch-depth: 0  # Full history for setuptools-scm
 
       - name: Set up Python
+        if: matrix.python-version != 'system'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
           cache: 'pip'
+
+      - name: Use system Python (Linux only)
+        if: matrix.python-version == 'system'
+        run: |
+          python3 --version
+          which python3
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ "${{ matrix.python-version }}" = "system" ]; then
+            python3 -m pip install --upgrade pip
+            python3 -m pip install -r requirements.txt
+          else
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+          fi
+        shell: bash
 
       - name: Install package in editable mode
         run: |
-          pip install -e .
+          if [ "${{ matrix.python-version }}" = "system" ]; then
+            python3 -m pip install -e .
+          else
+            pip install -e .
+          fi
+        shell: bash
 
       - name: Get version from tag
         id: get_version
@@ -65,7 +86,11 @@ jobs:
       - name: Verify version matches
         shell: bash
         run: |
-          PACKAGE_VERSION=$(python -c "from annotation_toolkit import __version__; print(__version__)")
+          if [ "${{ matrix.python-version }}" = "system" ]; then
+            PACKAGE_VERSION=$(python3 -c "from annotation_toolkit import __version__; print(__version__)")
+          else
+            PACKAGE_VERSION=$(python -c "from annotation_toolkit import __version__; print(__version__)")
+          fi
           TAG_VERSION="${{ steps.get_version.outputs.version_number }}"
           echo "Package version: $PACKAGE_VERSION"
           echo "Tag version: $TAG_VERSION"
@@ -109,26 +134,26 @@ jobs:
 
       # Linux Build
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.platform == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget fuse libfuse2 imagemagick
 
       - name: Build Linux debug executable
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.platform == 'Linux'
         working-directory: scripts/build
         run: |
           pyinstaller linux_build_debug.spec --distpath ../../dist --clean --noconfirm
           chmod +x ../../dist/AnnotationToolkit-Debug/AnnotationToolkit-Debug
 
       - name: Build Linux AppImage (Release)
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.platform == 'Linux'
         run: |
           cd scripts/build
           bash build_appimage.sh
 
       - name: Create Linux debug archive
-        if: matrix.os == 'ubuntu-20.04'
+        if: matrix.platform == 'Linux'
         run: |
           cd dist
           VERSION="${{ steps.get_version.outputs.version }}"
