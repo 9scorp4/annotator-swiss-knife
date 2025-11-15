@@ -1075,20 +1075,20 @@ OR any valid JSON data:
         )
 
         # Fix the specific error with missing comma - this is the most specific pattern
-        if '"content":"You are Meta AI""' in text:
+        if '"content":"You are an AI assistant""' in text:
             json_parser_logger.info(
-                'Found specific pattern: content":"You are Meta AI""'
+                'Found specific pattern: content":"You are an AI assistant""'
             )
             text = text.replace(
-                '"content":"You are Meta AI""', '"content":"You are Meta AI",'
+                '"content":"You are an AI assistant""', '"content":"You are an AI assistant",'
             )
-            json_parser_logger.debug("Fixed missing comma after 'You are Meta AI'")
+            json_parser_logger.debug("Fixed missing comma after AI assistant content")
 
         # More general pattern for missing commas between quoted values
         text = re.sub(r'("(?:[^"\\]|\\.)*")("(?:[^"\\]|\\.)*":)', r"\1,\2", text)
 
         # Fix missing quotes around string values
-        # Look for patterns like "content":You are Meta AI and add quotes
+        # Look for patterns like "content":You are an AI assistant and add quotes
         # This pattern is more aggressive and will catch more cases
         text = re.sub(
             r'"([^"]+)":\s*([^"{}\[\],\s][^{}\[\],]*?)(?=,|\}|\]|$)', r'"\1":"\2"', text
@@ -1097,32 +1097,32 @@ OR any valid JSON data:
 
         # Add a more specific pattern for the exact error we're seeing
         text = re.sub(
-            r'"content":You are Meta AI"', r'"content":"You are Meta AI"', text
+            r'"content":You are an AI assistant"', r'"content":"You are an AI assistant"', text
         )
 
         # Fix the specific error with missing comma
         text = re.sub(
-            r'"content":"You are Meta AI""', r'"content":"You are Meta AI","', text
+            r'"content":"You are an AI assistant""', r'"content":"You are an AI assistant","', text
         )
 
         # Fix another variant of the missing comma issue
         text = re.sub(
-            r'"content":"You are Meta AI"([^,])',
-            r'"content":"You are Meta AI",\1',
+            r'"content":"You are an AI assistant"([^,])',
+            r'"content":"You are an AI assistant",\1',
             text,
         )
 
         # Fix the specific error pattern that's causing the issue
-        if '"content":"You are Meta AI""' in text:
+        if '"content":"You are an AI assistant""' in text:
             # Log the exact pattern we found
             json_parser_logger.info(
-                'Found problematic pattern: content":"You are Meta AI""'
+                'Found problematic pattern: content":"You are an AI assistant""'
             )
             # Replace with the correct version (with comma)
             text = text.replace(
-                '"content":"You are Meta AI""', '"content":"You are Meta AI",'
+                '"content":"You are an AI assistant""', '"content":"You are an AI assistant",'
             )
-            json_parser_logger.info("Fixed missing comma after 'You are Meta AI'")
+            json_parser_logger.info("Fixed missing comma after AI assistant content")
 
         # More general pattern to catch any field with unquoted values
         text = re.sub(
