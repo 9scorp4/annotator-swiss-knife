@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Updated documentation to use generic corporate terminology for broader applicability
+- Updated JSON parser patterns to use generic AI terminology
+
+### Infrastructure
+- Updated macOS bundle identifiers to vendor-neutral format
+- Added uv.lock to gitignore
+- Removed unused image file from docs
+
 ## [0.4.0] - 2025-01-14
 
 ### Added
