@@ -23,6 +23,8 @@ dist/
 build/
 *.manifest
 *.spec
+# But keep PyInstaller spec files
+!scripts/build/*.spec
 
 # Logs
 logs/
