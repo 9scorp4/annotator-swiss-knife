@@ -77,3 +77,6 @@ __pycache__/
 
 # Zip repository
 /zip
+
+# UV lock
+uv.lock
