@@ -21,6 +21,8 @@ wheels/
 # Distribution / packaging
 dist/
 build/
+# But keep build scripts directory
+!scripts/build/
 *.manifest
 *.spec
 # But keep PyInstaller spec files
