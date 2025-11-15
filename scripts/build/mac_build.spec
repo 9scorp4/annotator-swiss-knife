@@ -95,7 +95,7 @@ app = BUNDLE(
     coll,
     name='AnnotationToolkit.app',
     icon=None,
-    bundle_identifier='com.meta.annotationtoolkit',
+    bundle_identifier='com.annotationtoolkit.app',
     info_plist={
         'NSHighResolutionCapable': 'True',
         'CFBundleShortVersionString': version,
