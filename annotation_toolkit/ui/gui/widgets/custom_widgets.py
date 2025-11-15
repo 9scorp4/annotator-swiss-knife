@@ -93,6 +93,10 @@ class PlainTextEdit(QTextEdit):
         """Initialize the PlainTextEdit widget."""
         super().__init__(*args, **kwargs)
 
+        # Initialize placeholder state
+        self._showing_placeholder = False
+        self._placeholder_text = ""
+
         # Set a modern monospace font for better code display
         self.setFont(QFont("SF Mono", 12) if self._is_mac() else QFont("Consolas", 12))
 
@@ -215,14 +219,6 @@ class PlainTextEdit(QTextEdit):
         # Default handling for other keys
         super().keyPressEvent(event)
 
-    def focusInEvent(self, event):
-        """Handle focus in event with visual feedback."""
-        super().focusInEvent(event)
-
-    def focusOutEvent(self, event):
-        """Handle focus out event."""
-        super().focusOutEvent(event)
-
     def wheelEvent(self, event):
         """
         Handle wheel events for better scrolling with Ctrl+Wheel zoom.
@@ -270,12 +266,12 @@ class PlainTextEdit(QTextEdit):
         self._placeholder_text = text
 
         # If the widget is empty, show the placeholder
-        if not self.toPlainText():
+        if not self.toPlainText().strip():
             self._show_placeholder()
 
     def _show_placeholder(self):
         """Show the placeholder text."""
-        if hasattr(self, "_placeholder_text"):
+        if hasattr(self, "_placeholder_text") and not self._showing_placeholder:
             # Set the placeholder text with a lighter color
             self.setPlainText(self._placeholder_text)
 
@@ -289,7 +285,7 @@ class PlainTextEdit(QTextEdit):
 
     def _hide_placeholder(self):
         """Hide the placeholder text."""
-        if hasattr(self, "_showing_placeholder") and self._showing_placeholder:
+        if getattr(self, "_showing_placeholder", False):
             self.clear()
 
             # Restore normal text color
@@ -306,6 +302,6 @@ class PlainTextEdit(QTextEdit):
 
     def focusOutEvent(self, event):
         """Handle focus out event to show placeholder if empty."""
-        if not self.toPlainText():
+        if not self.toPlainText().strip():
             self._show_placeholder()
         super().focusOutEvent(event)
