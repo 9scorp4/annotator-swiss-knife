@@ -172,6 +172,176 @@ class ConversationGenerator(JsonAnnotationTool):
         logger.debug(f"Turn removed successfully. Remaining messages: {len(self._conversation)}")
         return True
 
+    def update_turn(self, turn_index: int, user_message: str, assistant_message: str) -> bool:
+        """
+        Update an existing conversation turn.
+
+        Args:
+            turn_index (int): The index of the turn to update (0-based).
+            user_message (str): The new user message.
+            assistant_message (str): The new assistant message.
+
+        Returns:
+            bool: True if the turn was updated successfully, False otherwise.
+
+        Raises:
+            TypeValidationError: If messages are not strings or are empty.
+        """
+        logger.info(f"Updating turn at index {turn_index}")
+
+        # Validate inputs
+        if not isinstance(user_message, str):
+            raise TypeValidationError(
+                "user_message",
+                str,
+                type(user_message),
+                suggestion="User message must be a string."
+            )
+
+        if not isinstance(assistant_message, str):
+            raise TypeValidationError(
+                "assistant_message",
+                str,
+                type(assistant_message),
+                suggestion="Assistant message must be a string."
+            )
+
+        if not user_message.strip():
+            raise ProcessingError(
+                "User message cannot be empty",
+                error_code=ErrorCode.VALIDATION_ERROR,
+                suggestion="Please provide a non-empty user message."
+            )
+
+        if not assistant_message.strip():
+            raise ProcessingError(
+                "Assistant message cannot be empty",
+                error_code=ErrorCode.VALIDATION_ERROR,
+                suggestion="Please provide a non-empty assistant message."
+            )
+
+        # Calculate message indices (each turn = 2 messages)
+        user_msg_index = turn_index * 2
+        assistant_msg_index = turn_index * 2 + 1
+
+        # Validate index
+        if user_msg_index < 0 or assistant_msg_index >= len(self._conversation):
+            logger.warning(f"Invalid turn index: {turn_index}")
+            return False
+
+        # Update messages
+        self._conversation[user_msg_index] = {
+            "role": "user",
+            "content": user_message.strip()
+        }
+        self._conversation[assistant_msg_index] = {
+            "role": "assistant",
+            "content": assistant_message.strip()
+        }
+
+        logger.debug(f"Turn {turn_index} updated successfully")
+        return True
+
+    def insert_turn(self, turn_index: int, user_message: str, assistant_message: str) -> bool:
+        """
+        Insert a conversation turn at a specific position.
+
+        Args:
+            turn_index (int): The index where the turn should be inserted (0-based).
+            user_message (str): The user's message/prompt.
+            assistant_message (str): The assistant's response.
+
+        Returns:
+            bool: True if the turn was inserted successfully, False if max turns reached or invalid index.
+
+        Raises:
+            TypeValidationError: If messages are not strings or are empty.
+        """
+        logger.info(f"Inserting turn at index {turn_index}")
+
+        # Validate inputs (same as add_turn)
+        if not isinstance(user_message, str):
+            raise TypeValidationError(
+                "user_message",
+                str,
+                type(user_message),
+                suggestion="User message must be a string."
+            )
+
+        if not isinstance(assistant_message, str):
+            raise TypeValidationError(
+                "assistant_message",
+                str,
+                type(assistant_message),
+                suggestion="Assistant message must be a string."
+            )
+
+        if not user_message.strip():
+            raise ProcessingError(
+                "User message cannot be empty",
+                error_code=ErrorCode.VALIDATION_ERROR,
+                suggestion="Please provide a non-empty user message."
+            )
+
+        if not assistant_message.strip():
+            raise ProcessingError(
+                "Assistant message cannot be empty",
+                error_code=ErrorCode.VALIDATION_ERROR,
+                suggestion="Please provide a non-empty assistant message."
+            )
+
+        # Check if we've reached max turns
+        if len(self._conversation) >= self._max_turns * 2:
+            logger.warning(f"Cannot insert turn: maximum of {self._max_turns} turns reached")
+            return False
+
+        # Calculate message index
+        insert_position = turn_index * 2
+
+        # Validate index (can insert at end, so allow index == turn_count)
+        turn_count = self.get_turn_count()
+        if turn_index < 0 or turn_index > turn_count:
+            logger.warning(f"Invalid turn index for insertion: {turn_index}")
+            return False
+
+        # Create the two messages
+        user_msg = {
+            "role": "user",
+            "content": user_message.strip()
+        }
+        assistant_msg = {
+            "role": "assistant",
+            "content": assistant_message.strip()
+        }
+
+        # Insert messages at the specified position
+        self._conversation.insert(insert_position, assistant_msg)
+        self._conversation.insert(insert_position, user_msg)
+
+        logger.debug(f"Turn inserted at index {turn_index}. Total messages: {len(self._conversation)}")
+        return True
+
+    def get_turn(self, turn_index: int) -> Optional[Tuple[str, str]]:
+        """
+        Get a specific turn by index.
+
+        Args:
+            turn_index (int): The index of the turn to retrieve (0-based).
+
+        Returns:
+            Optional[Tuple[str, str]]: Tuple of (user_message, assistant_message) or None if invalid index.
+        """
+        user_msg_index = turn_index * 2
+        assistant_msg_index = turn_index * 2 + 1
+
+        if user_msg_index < 0 or assistant_msg_index >= len(self._conversation):
+            return None
+
+        user_msg = self._conversation[user_msg_index].get("content", "")
+        assistant_msg = self._conversation[assistant_msg_index].get("content", "")
+
+        return (user_msg, assistant_msg)
+
     def clear(self) -> None:
         """
         Clear all conversation turns.
