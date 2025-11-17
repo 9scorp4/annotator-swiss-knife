@@ -65,6 +65,47 @@ class SidebarButton(QPushButton):
         """Show the text label for expanded state."""
         self.text_label.show()
 
+    def enterEvent(self, event):
+        """Animate button on mouse enter."""
+        if not self.is_active:
+            # Subtle scale effect on hover
+            from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve
+            current_geo = self.geometry()
+            # Small scale increase (2px on each side)
+            target_geo = QRect(
+                current_geo.x() - 2,
+                current_geo.y() - 1,
+                current_geo.width() + 4,
+                current_geo.height() + 2
+            )
+            self.hover_animation = QPropertyAnimation(self, b"geometry")
+            self.hover_animation.setDuration(150)
+            self.hover_animation.setStartValue(current_geo)
+            self.hover_animation.setEndValue(target_geo)
+            self.hover_animation.setEasingCurve(QEasingCurve.OutCubic)
+            self.hover_animation.start()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        """Animate button on mouse leave."""
+        if not self.is_active and hasattr(self, 'hover_animation'):
+            # Return to original size
+            from PyQt5.QtCore import QPropertyAnimation, QRect, QEasingCurve
+            current_geo = self.geometry()
+            target_geo = QRect(
+                current_geo.x() + 2,
+                current_geo.y() + 1,
+                current_geo.width() - 4,
+                current_geo.height() - 2
+            )
+            self.leave_animation = QPropertyAnimation(self, b"geometry")
+            self.leave_animation.setDuration(150)
+            self.leave_animation.setStartValue(current_geo)
+            self.leave_animation.setEndValue(target_geo)
+            self.leave_animation.setEasingCurve(QEasingCurve.InCubic)
+            self.leave_animation.start()
+        super().leaveEvent(event)
+
     def _update_style(self):
         """Update button styling based on state."""
         if self.is_active:
@@ -219,30 +260,71 @@ class CollapsibleSidebar(QFrame):
             self.collapse()
 
     def collapse(self):
-        """Collapse the sidebar to icon-only mode."""
-        self.is_collapsed = True
-        self.setFixedWidth(70)
+        """Collapse the sidebar to icon-only mode with smooth animation."""
+        from PyQt5.QtCore import QEasingCurve, QTimer
 
-        # Hide text labels
-        for btn in self.buttons.values():
-            btn.hide_text()
-        self.home_btn.hide_text()
+        self.is_collapsed = True
+
+        # Animate width from 220 to 70
+        self.width_animation = QPropertyAnimation(self, b"maximumWidth")
+        self.width_animation.setDuration(250)
+        self.width_animation.setStartValue(220)
+        self.width_animation.setEndValue(70)
+        self.width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+
+        # Also animate minimum width to ensure proper resizing
+        self.min_width_animation = QPropertyAnimation(self, b"minimumWidth")
+        self.min_width_animation.setDuration(250)
+        self.min_width_animation.setStartValue(220)
+        self.min_width_animation.setEndValue(70)
+        self.min_width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+
+        # Hide text labels halfway through animation
+        def hide_text_halfway():
+            for btn in self.buttons.values():
+                btn.hide_text()
+            self.home_btn.hide_text()
+
+        QTimer.singleShot(125, hide_text_halfway)
 
         # Update toggle button
         self.toggle_btn.setText("▶")
 
-    def expand(self):
-        """Expand the sidebar to show icons and text."""
-        self.is_collapsed = False
-        self.setFixedWidth(220)
+        # Start animations
+        self.width_animation.start()
+        self.min_width_animation.start()
 
-        # Show text labels
+    def expand(self):
+        """Expand the sidebar to show icons and text with smooth animation."""
+        from PyQt5.QtCore import QEasingCurve
+
+        self.is_collapsed = False
+
+        # Show text labels immediately
         for btn in self.buttons.values():
             btn.show_text()
         self.home_btn.show_text()
 
+        # Animate width from 70 to 220
+        self.width_animation = QPropertyAnimation(self, b"maximumWidth")
+        self.width_animation.setDuration(250)
+        self.width_animation.setStartValue(70)
+        self.width_animation.setEndValue(220)
+        self.width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+
+        # Also animate minimum width
+        self.min_width_animation = QPropertyAnimation(self, b"minimumWidth")
+        self.min_width_animation.setDuration(250)
+        self.min_width_animation.setStartValue(70)
+        self.min_width_animation.setEndValue(220)
+        self.min_width_animation.setEasingCurve(QEasingCurve.InOutCubic)
+
         # Update toggle button
         self.toggle_btn.setText("☰")
+
+        # Start animations
+        self.width_animation.start()
+        self.min_width_animation.start()
 
     def set_active_tool(self, tool_name: str):
         """Set the active tool programmatically without emitting signals."""

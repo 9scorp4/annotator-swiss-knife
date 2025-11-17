@@ -47,6 +47,10 @@ from .widgets.main_menu import MainMenuWidget
 from .widgets.text_cleaner_widget import TextCleanerWidget
 from .widgets.text_collector_widget import TextCollectorWidget
 from .sidebar import CollapsibleSidebar
+from .themes import ThemeManager, StylesheetGenerator
+from .utils.shortcuts import ShortcutManager, ShortcutHelpDialog
+from .utils.auto_save import AutoSaveManager
+from .utils.session_manager import SessionManager
 
 
 class AnnotationToolkitApp(QMainWindow):
@@ -103,8 +107,24 @@ class AnnotationToolkitApp(QMainWindow):
         self.tools = {}
         self._initialize_tools()
 
+        # Initialize session manager
+        self.session_manager = SessionManager()
+
+        # Initialize auto-save manager
+        self.auto_save_manager = AutoSaveManager(interval_seconds=60)
+
         # Set up UI
         self._init_ui()
+
+        # Restore window state from previous session
+        self.session_manager.restore_window_state(self)
+
+        # Set up keyboard shortcuts
+        self._setup_shortcuts()
+
+        # Start auto-save
+        self.auto_save_manager.start()
+
         logger.info("GUI application initialized successfully")
 
     def _initialize_tools(self) -> None:
@@ -455,537 +475,195 @@ class AnnotationToolkitApp(QMainWindow):
             raise ValueError(f"Unknown tool: {tool_name}")
 
         if target_widget:
-            # Set the current widget
+            # Switch to the target widget
+            # Note: Fade animations removed due to rendering issues with QGraphicsOpacityEffect
+            # on complex widgets with layouts. Opacity effects interfere with child widget rendering.
             self.stacked_widget.setCurrentWidget(target_widget)
+
             self.status_bar.showMessage(f"Using {tool_name}")
             # Update sidebar active state
             self.sidebar.set_active_tool(tool_name)
-
     def _setup_theme(self) -> None:
         """
-        Set up the application theme based on system preferences.
+        Set up the glassmorphism theme system with dynamic theme switching.
         """
-        logger.info("Setting up application theme")
+        logger.info("Initializing glassmorphism theme system")
 
-        # Check if system is using dark mode
-        palette = self.palette()
-        if palette.color(QPalette.Window).lightness() < 128:
-            logger.info("Dark mode detected, applying dark theme")
-            self._apply_dark_theme()
-        else:
-            logger.info("Light mode detected, applying light theme")
-            self._apply_light_theme()
+        # Initialize theme manager
+        self.theme_manager = ThemeManager.instance()
 
-    def _apply_dark_theme(self) -> None:
-        """
-        Apply dark theme to the application.
-        """
-        # Set dark theme for the entire application with enhanced modern styling
-        self.setStyleSheet(
-            """
-            QMainWindow, QWidget {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2a2a2a, stop: 1 #1f1f1f);
-                color: #00FFFF;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            }
-            QFrame {
-                background-color: rgba(65, 65, 65, 0.95);
-                border: 1px solid rgba(88, 88, 88, 0.8);
-                border-radius: 12px;
-            }
-            #headerFrame {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(60, 60, 60, 0.98), stop: 1 rgba(50, 50, 50, 0.98));
-                border: none;
-                border-radius: 15px;
-                padding: 5px;
-            }
-            #contentContainer {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(65, 65, 65, 0.98), stop: 1 rgba(55, 55, 55, 0.98));
-                border: 1px solid rgba(88, 88, 88, 0.6);
-                border-radius: 15px;
-            }
-            #headerTitle, #mainTitle {
-                color: #00FFFF;
-                font-weight: 600;
-            }
-            #mainDescription, #footerLabel, #statusLabel {
-                color: #FF69B4;
-                font-weight: 400;
-            }
-            #sectionTitle, #fieldLabel {
-                color: #00FF7F;
-                font-weight: 600;
-            }
-            #searchFrame {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(70, 70, 70, 0.9), stop: 1 rgba(60, 60, 60, 0.9));
-                border-radius: 8px;
-                border: 1px solid rgba(88, 88, 88, 0.7);
-                padding: 2px;
-            }
-            #searchInput {
-                border: none;
-                padding: 8px 12px;
-                background-color: transparent;
-                color: #00FFFF;
-                font-size: 13px;
-                border-radius: 6px;
-            }
-            #searchInput:focus {
-                background-color: rgba(255, 255, 255, 0.1);
-                outline: 2px solid rgba(66, 165, 245, 0.8);
-            }
-            #searchButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #2196F3);
-                color: #ffffff;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 600;
-                border: none;
-            }
-            #searchButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #64B5F6, stop: 1 #42A5F5);
-            }
-            #searchButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
-            }
-            #separator {
-                background-color: rgba(88, 88, 88, 0.8);
-                border-radius: 1px;
-            }
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #2196F3);
-                color: #ffffff;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-weight: 600;
-                font-size: 13px;
-                min-height: 20px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #64B5F6, stop: 1 #42A5F5);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
-            }
-            QPushButton:focus {
-                outline: 2px solid rgba(66, 165, 245, 0.8);
-                outline-offset: 2px;
-            }
-            #homeButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(86, 86, 86, 0.9), stop: 1 rgba(68, 68, 68, 0.9));
-                color: #ffffff;
-                border: none;
-                font-weight: 600;
-                border-radius: 8px;
-                padding: 8px 16px;
-            }
-            #homeButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(117, 117, 117, 0.9), stop: 1 rgba(86, 86, 86, 0.9));
-            }
-            #homeButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(53, 53, 53, 0.9), stop: 1 rgba(44, 44, 44, 0.9));
-            }
-            QLabel {
-                color: #FFFFFF;
-                border: none;
-            }
-            QStatusBar {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(57, 57, 57, 0.95), stop: 1 rgba(45, 45, 45, 0.95));
-                color: #00FFFF;
-                border-top: 1px solid rgba(88, 88, 88, 0.5);
-                padding: 5px;
-            }
-            QSplitter::handle {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(88, 88, 88, 0.8), stop: 0.5 rgba(120, 120, 120, 0.9), stop: 1 rgba(88, 88, 88, 0.8));
-                border-radius: 4px;
-                margin: 2px;
-            }
-            QSplitter::handle:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(66, 165, 245, 0.7), stop: 0.5 rgba(66, 165, 245, 0.9), stop: 1 rgba(66, 165, 245, 0.7));
-            }
-            QPlainTextEdit, QTextEdit {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
-                color: #00FFFF;
-                border: 1px solid rgba(88, 88, 88, 0.7);
-                border-radius: 8px;
-                padding: 12px;
-                selection-background-color: rgba(33, 150, 243, 0.3);
-                selection-color: #ffffff;
-                font-size: 13px;
-                line-height: 1.4;
-            }
-            QPlainTextEdit:focus, QTextEdit:focus {
-                border: 2px solid rgba(66, 165, 245, 0.8);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(55, 55, 55, 0.95), stop: 1 rgba(45, 45, 45, 0.95));
-            }
-            QListWidget {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
-                color: #00FF7F;
-                border: 1px solid rgba(88, 88, 88, 0.7);
-                border-radius: 8px;
-                padding: 5px;
-                outline: none;
-            }
-            QListWidget::item {
-                padding: 10px;
-                border-radius: 6px;
-                margin: 2px;
-                border: none;
-            }
-            QListWidget::item:hover {
-                background-color: rgba(81, 81, 81, 0.8);
-                color: #ffffff;
-            }
-            QListWidget::item:selected {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(33, 150, 243, 0.8), stop: 1 rgba(25, 118, 210, 0.8));
-                color: #ffffff;
-            }
-            QComboBox {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
-                color: #FF69B4;
-                border: 1px solid rgba(88, 88, 88, 0.7);
-                border-radius: 6px;
-                padding: 8px 18px 8px 12px;
-                min-width: 6em;
-                font-size: 13px;
-            }
-            QComboBox:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(81, 81, 81, 0.95), stop: 1 rgba(65, 65, 65, 0.95));
-                border: 1px solid rgba(120, 120, 120, 0.8);
-            }
-            QComboBox:focus {
-                border: 2px solid rgba(66, 165, 245, 0.8);
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left: 1px solid rgba(88, 88, 88, 0.7);
-                border-radius: 0px 6px 6px 0px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border: 2px solid #f5f5f5;
-                border-top: none;
-                border-right: none;
-                width: 6px;
-                height: 6px;
-                margin-top: -3px;
-            }
-            QCheckBox {
-                color: #FFFF00;
-                font-size: 13px;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border: 2px solid rgba(88, 88, 88, 0.8);
-                border-radius: 4px;
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(50, 50, 50, 0.95), stop: 1 rgba(40, 40, 40, 0.95));
-            }
-            QCheckBox::indicator:hover {
-                border: 2px solid rgba(120, 120, 120, 0.9);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(65, 65, 65, 0.95), stop: 1 rgba(55, 55, 55, 0.95));
-            }
-            QCheckBox::indicator:checked {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #2196F3);
-                border: 2px solid #2196F3;
-            }
-            QCheckBox::indicator:checked:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #64B5F6, stop: 1 #42A5F5);
-            }
-        """
-        )
+        # Load theme preference from config
+        self.theme_manager.load_preference(self.config)
 
-    def _apply_light_theme(self) -> None:
+        # Connect to theme change signal for dynamic updates
+        self.theme_manager.theme_changed.connect(self._on_theme_changed)
+
+        # Apply initial theme
+        self._apply_current_theme()
+
+        logger.info(f"Theme system initialized - Mode: {self.theme_manager.current_mode.value}, "
+                   f"Is Dark: {self.theme_manager.is_dark_mode}")
+
+    def _apply_current_theme(self) -> None:
         """
-        Apply light theme to the application.
+        Apply the current theme from ThemeManager using StylesheetGenerator.
         """
-        # Set light theme for the entire application with enhanced modern styling
-        self.setStyleSheet(
-            """
-            QMainWindow, QWidget {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #fafafa, stop: 1 #f0f0f0);
-                color: #1a1a1a;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            }
-            QFrame {
-                background-color: rgba(255, 255, 255, 0.95);
-                border: 1px solid rgba(224, 224, 224, 0.6);
-                border-radius: 12px;
-            }
-            #headerFrame {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.98), stop: 1 rgba(248, 248, 248, 0.98));
-                border: none;
-                border-radius: 15px;
-                padding: 5px;
-            }
-            #contentContainer {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.98), stop: 1 rgba(250, 250, 250, 0.98));
-                border: 1px solid rgba(224, 224, 224, 0.4);
-                border-radius: 15px;
-            }
-            #headerTitle, #mainTitle {
-                color: #000000;  /* Pure black for maximum contrast */
-                font-weight: 700;  /* Bolder font weight */
-            }
-            #mainDescription, #footerLabel, #statusLabel {
-                color: #333333;  /* Darker for better readability */
-                font-weight: 400;
-            }
-            #sectionTitle, #fieldLabel {
-                color: #000000;  /* Pure black for maximum contrast */
-                font-weight: 600;
-            }
-            #searchFrame {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.9), stop: 1 rgba(248, 248, 248, 0.9));
-                border-radius: 8px;
-                border: 1px solid rgba(204, 204, 204, 0.5);
-                padding: 2px;
-            }
-            #searchInput {
-                border: none;
-                padding: 8px 12px;
-                background-color: transparent;
-                color: #1a1a1a;
-                font-size: 13px;
-                border-radius: 6px;
-            }
-            #searchInput:focus {
-                background-color: rgba(33, 150, 243, 0.05);
-                outline: 2px solid rgba(33, 150, 243, 0.3);
-            }
-            #searchButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #2196F3);
-                color: #ffffff;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 600;
-                border: none;
-            }
-            #searchButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #64B5F6, stop: 1 #42A5F5);
-            }
-            #searchButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
-            }
-            #separator {
-                background-color: rgba(204, 204, 204, 0.6);
-                border-radius: 1px;
-            }
-            QPushButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #2196F3);
-                color: #ffffff;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-weight: 600;
-                font-size: 13px;
-                min-height: 20px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #64B5F6, stop: 1 #42A5F5);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #2196F3, stop: 1 #1976D2);
-            }
-            QPushButton:focus {
-                outline: 2px solid rgba(66, 165, 245, 0.8);
-                outline-offset: 2px;
-            }
-            #homeButton {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(224, 224, 224, 0.9), stop: 1 rgba(208, 208, 208, 0.9));
-                color: #1a1a1a;
-                border: none;
-                font-weight: 600;
-                border-radius: 8px;
-                padding: 8px 16px;
-            }
-            #homeButton:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(189, 189, 189, 0.9), stop: 1 rgba(158, 158, 158, 0.9));
-            }
-            #homeButton:pressed {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(158, 158, 158, 0.9), stop: 1 rgba(117, 117, 117, 0.9));
-            }
-            QLabel {
-                color: #1a1a1a;
-                border: none;
-            }
-            QStatusBar {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(248, 248, 248, 0.95), stop: 1 rgba(240, 240, 240, 0.95));
-                color: #666666;
-                border-top: 1px solid rgba(224, 224, 224, 0.3);
-                padding: 5px;
-            }
-            QSplitter::handle {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(224, 224, 224, 0.6), stop: 0.5 rgba(189, 189, 189, 0.8), stop: 1 rgba(224, 224, 224, 0.6));
-                border-radius: 4px;
-                margin: 2px;
-            }
-            QSplitter::handle:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0,
-                    stop: 0 rgba(66, 165, 245, 0.7), stop: 0.5 rgba(66, 165, 245, 0.9), stop: 1 rgba(66, 165, 245, 0.7));
-            }
-            QPlainTextEdit, QTextEdit {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.95), stop: 1 rgba(250, 250, 250, 0.95));
-                color: #1a1a1a;
-                border: 1px solid rgba(224, 224, 224, 0.5);
-                border-radius: 8px;
-                padding: 12px;
-                selection-background-color: rgba(33, 150, 243, 0.2);
-                selection-color: #1a1a1a;
-                font-size: 13px;
-                line-height: 1.4;
-            }
-            QPlainTextEdit:focus, QTextEdit:focus {
-                border: 2px solid rgba(33, 150, 243, 0.6);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.98), stop: 1 rgba(248, 248, 248, 0.98));
-            }
-            QListWidget {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.95), stop: 1 rgba(250, 250, 250, 0.95));
-                color: #1a1a1a;
-                border: 1px solid rgba(224, 224, 224, 0.5);
-                border-radius: 8px;
-                padding: 5px;
-                outline: none;
-            }
-            QListWidget::item {
-                padding: 10px;
-                border-radius: 6px;
-                margin: 2px;
-                border: none;
-            }
-            QListWidget::item:hover {
-                background-color: rgba(245, 245, 245, 0.8);
-                color: #1a1a1a;
-            }
-            QListWidget::item:selected {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(33, 150, 243, 0.8), stop: 1 rgba(25, 118, 210, 0.8));
-                color: #ffffff;
-            }
-            QComboBox {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.95), stop: 1 rgba(250, 250, 250, 0.95));
-                color: #1a1a1a;
-                border: 1px solid rgba(224, 224, 224, 0.5);
-                border-radius: 6px;
-                padding: 8px 18px 8px 12px;
-                min-width: 6em;
-                font-size: 13px;
-            }
-            QComboBox:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(245, 245, 245, 0.95), stop: 1 rgba(240, 240, 240, 0.95));
-                border: 1px solid rgba(189, 189, 189, 0.7);
-            }
-            QComboBox:focus {
-                border: 2px solid rgba(66, 165, 245, 0.8);
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left: 1px solid rgba(224, 224, 224, 0.5);
-                border-radius: 0px 6px 6px 0px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border: 2px solid #1a1a1a;
-                border-top: none;
-                border-right: none;
-                width: 6px;
-                height: 6px;
-                margin-top: -3px;
-            }
-            QCheckBox {
-                color: #1a1a1a;
-                font-size: 13px;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border: 2px solid rgba(224, 224, 224, 0.7);
-                border-radius: 4px;
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(255, 255, 255, 0.95), stop: 1 rgba(250, 250, 250, 0.95));
-            }
-            QCheckBox::indicator:hover {
-                border: 2px solid rgba(189, 189, 189, 0.8);
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 rgba(245, 245, 245, 0.95), stop: 1 rgba(240, 240, 240, 0.95));
-            }
-            QCheckBox::indicator:checked {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #42A5F5, stop: 1 #2196F3);
-                border: 2px solid #2196F3;
-            }
-            QCheckBox::indicator:checked:hover {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #64B5F6, stop: 1 #42A5F5);
-            }
+        theme = self.theme_manager.current_theme
+        generator = StylesheetGenerator(theme)
+
+        # Generate and apply main application stylesheet
+        app_stylesheet = generator.generate_app_stylesheet()
+        self.setStyleSheet(app_stylesheet)
+
+        # Update sidebar stylesheet if it exists
+        if hasattr(self, 'sidebar') and self.sidebar:
+            sidebar_stylesheet = generator.generate_sidebar_stylesheet(
+                collapsed=getattr(self.sidebar, '_collapsed', False)
+            )
+            self.sidebar.setStyleSheet(sidebar_stylesheet)
+
+        logger.debug(f"Applied {'dark' if theme.is_dark else 'light'} glassmorphism theme")
+
+    def _on_theme_changed(self, new_theme) -> None:
         """
-        )
+        Handle theme changes from ThemeManager.
+
+        Args:
+            new_theme: The new GlassTheme instance
+        """
+        logger.info(f"Theme changed to: {new_theme.name}")
+        self._apply_current_theme()
+
+        # Save theme preference
+        self.theme_manager.save_preference(self.config)
+
+    def _setup_shortcuts(self) -> None:
+        """
+        Set up keyboard shortcuts and register callbacks.
+        """
+        logger.info("Setting up keyboard shortcuts")
+        self.shortcut_manager = ShortcutManager()
+
+        # Register callbacks for shortcuts
+        self.shortcut_manager.shortcuts["Home"]["callback"] = lambda: self.sidebar.home_btn.click()
+        self.shortcut_manager.shortcuts["Toggle Theme"]["callback"] = self.toggle_theme
+        self.shortcut_manager.shortcuts["Help"]["callback"] = self.show_shortcut_help
+        self.shortcut_manager.shortcuts["Quit"]["callback"] = self.close
+
+        # Register tool shortcuts
+        if "Dictionary to Bullet List" in self.tools:
+            self.shortcut_manager.shortcuts["Dictionary to Bullet List"]["callback"] = \
+                lambda: self.switch_to_tool("Dictionary to Bullet List")
+
+        if "JSON Visualizer" in self.tools:
+            self.shortcut_manager.shortcuts["JSON Visualizer"]["callback"] = \
+                lambda: self.switch_to_tool("JSON Visualizer")
+
+        if "Text Cleaner" in self.tools:
+            self.shortcut_manager.shortcuts["Text Cleaner"]["callback"] = \
+                lambda: self.switch_to_tool("Text Cleaner")
+
+        if "Conversation Generator" in self.tools:
+            self.shortcut_manager.shortcuts["Conversation Generator"]["callback"] = \
+                lambda: self.switch_to_tool("Conversation Generator")
+
+        if "Text Collector" in self.tools:
+            self.shortcut_manager.shortcuts["Text Collector"]["callback"] = \
+                lambda: self.switch_to_tool("Text Collector")
+
+        logger.info(f"Registered {len(self.shortcut_manager.shortcuts)} keyboard shortcuts")
+
+    def show_shortcut_help(self) -> None:
+        """Show the keyboard shortcuts help dialog."""
+        dialog = ShortcutHelpDialog(self.shortcut_manager, self)
+        dialog.exec_()
+
+    def keyPressEvent(self, event) -> None:
+        """
+        Handle keyboard shortcuts.
+
+        Args:
+            event: The key press event
+        """
+        # Check for F1 (help)
+        if event.key() == Qt.Key_F1:
+            self.show_shortcut_help()
+            event.accept()
+            return
+
+        # Check for Ctrl+Q (quit)
+        if event.key() == Qt.Key_Q and event.modifiers() == Qt.ControlModifier:
+            self.close()
+            event.accept()
+            return
+
+        # Check for Ctrl+H (home)
+        if event.key() == Qt.Key_H and event.modifiers() == Qt.ControlModifier:
+            self.sidebar.home_btn.click()
+            event.accept()
+            return
+
+        # Check for Ctrl+T (toggle theme)
+        if event.key() == Qt.Key_T and event.modifiers() == Qt.ControlModifier:
+            self.toggle_theme()
+            event.accept()
+            return
+
+        # Check for Ctrl+1-5 (tool shortcuts)
+        if event.modifiers() == Qt.ControlModifier:
+            if event.key() == Qt.Key_1 and "Dictionary to Bullet List" in self.tools:
+                self.switch_to_tool("Dictionary to Bullet List")
+                event.accept()
+                return
+            elif event.key() == Qt.Key_2 and "JSON Visualizer" in self.tools:
+                self.switch_to_tool("JSON Visualizer")
+                event.accept()
+                return
+            elif event.key() == Qt.Key_3 and "Text Cleaner" in self.tools:
+                self.switch_to_tool("Text Cleaner")
+                event.accept()
+                return
+            elif event.key() == Qt.Key_4 and "Conversation Generator" in self.tools:
+                self.switch_to_tool("Conversation Generator")
+                event.accept()
+                return
+            elif event.key() == Qt.Key_5 and "Text Collector" in self.tools:
+                self.switch_to_tool("Text Collector")
+                event.accept()
+                return
+
+        # Pass unhandled events to parent
+        super().keyPressEvent(event)
+
+    def toggle_theme(self) -> None:
+        """
+        Toggle between light and dark themes.
+
+        This method can be called from menu actions or keyboard shortcuts.
+        """
+        self.theme_manager.toggle_theme()
+
 
     def closeEvent(self, event) -> None:
         """
         Handle the window close event.
 
-        Save the window size to the configuration.
+        Save window state, session data, and perform cleanup.
 
         Args:
             event: The close event.
         """
         logger.info("Application closing")
 
-        # Save window size to config
+        # Stop auto-save
+        if hasattr(self, 'auto_save_manager'):
+            self.auto_save_manager.stop()
+
+        # Save window state to session
+        if hasattr(self, 'session_manager'):
+            self.session_manager.save_window_state(self)
+
+        # Save window size to config (legacy)
         width = self.width()
         height = self.height()
         logger.debug(f"Saving window size to config: {width}x{height}")

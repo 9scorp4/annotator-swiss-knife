@@ -3,9 +3,19 @@ Theme and color palette constants for the GUI application.
 
 This module provides a centralized color palette and theme system
 for consistent styling across all widgets.
+
+DEPRECATED: This module is kept for backward compatibility.
+New code should use the glassmorphism theme system in themes/
 """
 
 from typing import Dict
+
+# Import new glassmorphism theme system
+try:
+    from .themes import ThemeManager, StylesheetGenerator
+    _GLASSMORPHISM_AVAILABLE = True
+except ImportError:
+    _GLASSMORPHISM_AVAILABLE = False
 
 
 class ColorPalette:
@@ -143,7 +153,15 @@ def get_button_style(
 
 
 def get_primary_button_style() -> str:
-    """Get stylesheet for primary action buttons."""
+    """Get stylesheet for primary action buttons (with glassmorphism if available)."""
+    if _GLASSMORPHISM_AVAILABLE:
+        try:
+            theme = ThemeManager.instance().current_theme
+            generator = StylesheetGenerator(theme)
+            return generator.generate_button_stylesheet(variant="primary", size="medium")
+        except Exception:
+            pass  # Fall back to legacy style
+
     return get_button_style(
         ColorPalette.PRIMARY,
         ColorPalette.PRIMARY_HOVER,
@@ -152,7 +170,15 @@ def get_primary_button_style() -> str:
 
 
 def get_success_button_style() -> str:
-    """Get stylesheet for success/add buttons."""
+    """Get stylesheet for success/add buttons (with glassmorphism if available)."""
+    if _GLASSMORPHISM_AVAILABLE:
+        try:
+            theme = ThemeManager.instance().current_theme
+            generator = StylesheetGenerator(theme)
+            return generator.generate_button_stylesheet(variant="success", size="medium")
+        except Exception:
+            pass  # Fall back to legacy style
+
     return get_button_style(
         ColorPalette.SUCCESS,
         ColorPalette.SUCCESS_HOVER,
@@ -161,7 +187,15 @@ def get_success_button_style() -> str:
 
 
 def get_danger_button_style() -> str:
-    """Get stylesheet for danger/delete buttons."""
+    """Get stylesheet for danger/delete buttons (with glassmorphism if available)."""
+    if _GLASSMORPHISM_AVAILABLE:
+        try:
+            theme = ThemeManager.instance().current_theme
+            generator = StylesheetGenerator(theme)
+            return generator.generate_button_stylesheet(variant="danger", size="medium")
+        except Exception:
+            pass  # Fall back to legacy style
+
     return get_button_style(
         ColorPalette.DANGER,
         ColorPalette.DANGER_HOVER,
@@ -170,7 +204,15 @@ def get_danger_button_style() -> str:
 
 
 def get_warning_button_style() -> str:
-    """Get stylesheet for warning/caution buttons."""
+    """Get stylesheet for warning/caution buttons (with glassmorphism if available)."""
+    if _GLASSMORPHISM_AVAILABLE:
+        try:
+            theme = ThemeManager.instance().current_theme
+            generator = StylesheetGenerator(theme)
+            return generator.generate_button_stylesheet(variant="warning", size="medium")
+        except Exception:
+            pass  # Fall back to legacy style
+
     return get_button_style(
         ColorPalette.WARNING,
         ColorPalette.WARNING_HOVER,
@@ -178,16 +220,25 @@ def get_warning_button_style() -> str:
     )
 
 
-def get_frame_style(is_dark: bool = False) -> str:
+def get_frame_style(is_dark: bool = False, elevated: bool = False) -> str:
     """
-    Get stylesheet for frames/containers.
+    Get stylesheet for frames/containers (with glassmorphism if available).
 
     Args:
-        is_dark: Whether to use dark theme colors
+        is_dark: Whether to use dark theme colors (deprecated when using glassmorphism)
+        elevated: Whether frame should be elevated (more opaque)
 
     Returns:
         str: Qt stylesheet for frames
     """
+    if _GLASSMORPHISM_AVAILABLE:
+        try:
+            theme = ThemeManager.instance().current_theme
+            generator = StylesheetGenerator(theme)
+            return generator.generate_glass_panel_stylesheet(elevated=elevated)
+        except Exception:
+            pass  # Fall back to legacy style
+
     if is_dark:
         bg_color = ColorPalette.DARK_BG_TERTIARY
         border_color = ColorPalette.GRAY_700
