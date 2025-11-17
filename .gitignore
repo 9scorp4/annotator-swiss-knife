@@ -75,6 +75,13 @@ __pycache__/
 *.pyd
 .pytest_cache/
 
+# Backup and temporary files
+*_backup.py
+*_old.py
+*_backup_*.py
+*.bak
+*.tmp
+
 # Zip repository
 /zip
 
