@@ -1,302 +1,663 @@
 """
 Main menu widget for the annotation swiss knife GUI.
 
-This module implements the main menu widget that displays buttons for each tool.
+Modern card-based grid layout with search, categories, and recent tools.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set
+from collections import deque
+from datetime import datetime
 
-from PyQt5.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PyQt5.QtCore import Qt, QUrl, QSettings
+from PyQt5.QtGui import QFont, QDesktopServices
 from PyQt5.QtWidgets import (
-    QFrame,
-    QGraphicsDropShadowEffect,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QVBoxLayout,
     QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QLabel,
+    QFrame,
+    QScrollArea,
+    QComboBox,
 )
 
 from ....core.base import AnnotationTool
-
-
-class ToolButton(QPushButton):
-    """
-    Custom button for tools with clean, simple design.
-    """
-
-    def __init__(
-        self,
-        text,
-        description="",
-        icon_name=None,
-        color="#4CAF50",
-        hover_color="#45a049",
-        dark_color=None,
-        dark_hover_color=None,
-    ):
-        """
-        Initialize the tool button.
-
-        Args:
-            text (str): Button text
-            description (str): Button description
-            icon_name (str, optional): Icon name
-            color (str): Default button color for light theme
-            hover_color (str): Button color on hover for light theme
-            dark_color (str, optional): Button color for dark theme
-            dark_hover_color (str, optional): Button color on hover for dark theme
-        """
-        super().__init__(text)
-        self.tool_name = text
-        self.tool_description = description
-        self.default_color = color
-        self.hover_color = hover_color
-        self.dark_color = dark_color or color
-        self.dark_hover_color = dark_hover_color or hover_color
-
-        # Set reasonable fixed height
-        self.setMinimumHeight(70)
-        self.setFont(QFont("Arial", 14, QFont.Bold))
-        self.setCursor(Qt.PointingHandCursor)
-
-        # We'll use the palette to determine if we're in dark mode
-        is_dark_mode = self.palette().window().color().lightness() < 128
-
-        # Choose colors based on theme
-        button_color = self.dark_color if is_dark_mode else self.default_color
-        button_hover_color = self.dark_hover_color if is_dark_mode else self.hover_color
-
-        # Set clean, simple button style
-        self.setStyleSheet(
-            f"""
-            QPushButton {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 {button_color}, stop: 1 {self._darken_color(button_color, 0.1)});
-                color: white;
-                border-radius: 8px;
-                padding: 15px 20px;
-                text-align: left;
-                border: none;
-                font-weight: bold;
-                font-size: 14px;
-            }}
-            QPushButton:hover {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 {button_hover_color}, stop: 1 {self._darken_color(button_hover_color, 0.1)});
-            }}
-            QPushButton:pressed {{
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 {self._darken_color(button_color, 0.2)}, stop: 1 {self._darken_color(button_color, 0.3)});
-            }}
-            """
-        )
-
-        # Add simple shadow effect
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(15)
-        shadow.setXOffset(0)
-        shadow.setYOffset(3)
-        shadow.setColor(QColor(0, 0, 0, 50))
-        self.setGraphicsEffect(shadow)
-
-        # Set size policy
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
-    def _darken_color(self, color_hex, factor):
-        """Darken a hex color by a given factor."""
-        try:
-            # Remove the # if present
-            color_hex = color_hex.lstrip("#")
-
-            # Convert to RGB
-            r = int(color_hex[0:2], 16)
-            g = int(color_hex[2:4], 16)
-            b = int(color_hex[4:6], 16)
-
-            # Darken by factor
-            r = max(0, int(r * (1 - factor)))
-            g = max(0, int(g * (1 - factor)))
-            b = max(0, int(b * (1 - factor)))
-
-            # Convert back to hex
-            return f"#{r:02x}{g:02x}{b:02x}"
-        except:
-            return color_hex  # Return original if conversion fails
-
-    def enterEvent(self, event):
-        """Handle mouse enter event for smooth animations."""
-        super().enterEvent(event)
-        # Create a subtle animation effect
-        self.animation = QPropertyAnimation(self, b"geometry")
-        self.animation.setDuration(150)
-        self.animation.setEasingCurve(QEasingCurve.OutCubic)
-
-    def leaveEvent(self, event):
-        """Handle mouse leave event."""
-        super().leaveEvent(event)
+from ..components import ToolCard, SearchBar, CategoryFilter, GlassButton
+from ..themes import ThemeManager
 
 
 class MainMenuWidget(QWidget):
     """
-    Main menu widget with buttons for each tool.
+    Modern main menu with card grid, search, and category filtering.
+
+    Features:
+    - Card-based grid layout (2-3 columns responsive)
+    - Search bar with live filtering
+    - Category tabs for tool organization
+    - Recent tools section (last 3 used)
+    - Keyboard shortcuts displayed on cards
+    - Glassmorphic modern styling
     """
+
+    # Tool metadata with categories, icons, and shortcuts
+    TOOL_METADATA = {
+        "Dictionary to Bullet List": {
+            "category": "Text",
+            "icon": "📝",
+            "shortcut": "Ctrl+1",
+            "description": "Convert JSON dictionaries to formatted bullet lists with clickable links"
+        },
+        "JSON Visualizer": {
+            "category": "JSON",
+            "icon": "🔍",
+            "shortcut": "Ctrl+2",
+            "description": "Parse and visualize JSON data with conversation formatting and search"
+        },
+        "Text Cleaner": {
+            "category": "Text",
+            "icon": "🧹",
+            "shortcut": "Ctrl+3",
+            "description": "Clean text from markdown, JSON, and code artifacts for better readability"
+        },
+        "Conversation Generator": {
+            "category": "Conversation",
+            "icon": "💬",
+            "shortcut": "Ctrl+4",
+            "description": "Generate AI conversation JSON by copy-pasting prompts and responses (max 20 turns)"
+        },
+        "Text Collector": {
+            "category": "Text",
+            "icon": "📋",
+            "shortcut": "Ctrl+5",
+            "description": "Collect and organize text snippets from multiple fields into structured output"
+        },
+    }
 
     def __init__(self, tools: Dict[str, AnnotationTool], main_app):
         """
         Initialize the main menu widget.
 
         Args:
-            tools (Dict[str, AnnotationTool]): Dictionary of available tools.
-            main_app: The main application.
+            tools: Dictionary of available tools
+            main_app: The main application instance
         """
         super().__init__()
+
         self.tools = tools
         self.main_app = main_app
 
+        # Recent tools tracking (max 3)
+        self.recent_tools: deque = deque(maxlen=3)
+        self._load_recent_tools()
+
+        # Usage statistics tracking
+        self.usage_counts: Dict[str, int] = {}
+        self.last_used: Dict[str, str] = {}  # ISO format timestamps
+        self._load_usage_statistics()
+
+        # Favorite tools tracking
+        self.favorite_tools: Set[str] = set()
+        self._load_favorite_tools()
+
+        # All tool cards
+        self.tool_cards: List[ToolCard] = []
+
+        # Current filter state
+        self.current_search = ""
+        self.current_category = "All"
+        self.current_sort = "alphabetical"  # alphabetical, most_used, recently_used, favorites
+
+        # Setup UI
         self._init_ui()
 
+        # Apply theme
+        self._apply_theme()
+
+        # Connect to theme changes
+        theme_manager = ThemeManager.instance()
+        theme_manager.theme_changed.connect(self._apply_theme)
+
     def _init_ui(self) -> None:
-        """
-        Initialize the user interface.
-        """
-        # Main layout with better spacing
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 40, 30, 30)
-        layout.setSpacing(20)
+        """Initialize the user interface."""
+        # Main scroll area for the entire menu
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-        # Header container with background
-        header_container = QFrame()
-        header_container.setObjectName("headerContainer")
-        header_container.setStyleSheet(
-            """
-            #headerContainer {
-                background-color: rgba(0, 0, 0, 0.03);
-                border-radius: 15px;
-                padding: 10px;
-            }
-            """
-        )
-        header_layout = QVBoxLayout(header_container)
-        header_layout.setContentsMargins(20, 20, 20, 20)
-        header_layout.setSpacing(10)
+        # Main content widget
+        content = QWidget()
+        main_layout = QVBoxLayout(content)
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSpacing(24)
 
-        # Title with modern font - theme-aware (using system font)
+        # ===== HEADER =====
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(12)
+
+        # Title
         title_label = QLabel("Annotation Swiss Knife")
-        title_label.setFont(QFont("Arial", 28, QFont.Bold))
+        title_label.setFont(QFont("", 36, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setObjectName("mainTitle")  # Let app-wide theme handle color
         header_layout.addWidget(title_label)
 
-        # Description with subtle styling - theme-aware
-        desc_label = QLabel("Select a tool to use:")
-        desc_label.setFont(QFont("Arial", 14))
-        desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setObjectName("mainDescription")  # Let app-wide theme handle color
-        header_layout.addWidget(desc_label)
+        # Subtitle
+        subtitle_label = QLabel("Select a tool to begin")
+        subtitle_label.setFont(QFont("", 15))
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(subtitle_label)
 
-        layout.addWidget(header_container)
+        main_layout.addLayout(header_layout)
 
-        # Tool buttons container with card-like appearance that works in both themes
-        tools_container = QFrame()
-        tools_container.setObjectName("toolsContainer")
-        # We'll let the app-wide theme handle the styling for better dark mode compatibility
+        # ===== SEARCH BAR =====
+        self.search_bar = SearchBar(placeholder="Search tools...")
+        self.search_bar.search_changed.connect(self._on_search_changed)
+        self.search_bar.search_cleared.connect(self._on_search_cleared)
+        main_layout.addWidget(self.search_bar)
 
-        # Add shadow to tools container
-        tools_shadow = QGraphicsDropShadowEffect()
-        tools_shadow.setBlurRadius(20)
-        tools_shadow.setXOffset(0)
-        tools_shadow.setYOffset(5)
-        tools_shadow.setColor(QColor(0, 0, 0, 30))
-        tools_container.setGraphicsEffect(tools_shadow)
+        # ===== SORT & FILTER OPTIONS =====
+        options_layout = QHBoxLayout()
+        options_layout.setSpacing(12)
 
-        tools_layout = QVBoxLayout(tools_container)
-        tools_layout.setContentsMargins(20, 20, 20, 20)  # Reasonable margins
-        tools_layout.setSpacing(15)  # Moderate space between buttons
+        # Sort label
+        sort_label = QLabel("Sort by:")
+        sort_label.setFont(QFont("", 13))
+        options_layout.addWidget(sort_label)
 
-        # Define colors and descriptions for the tool buttons - more vibrant and modern
-        tool_info = {
-            "Dictionary to Bullet List": {
-                "colors": ("#4CAF50", "#3d9c40"),  # Green
-                "description": "Convert JSON dictionaries to formatted bullet lists with clickable links",
-            },
-            "JSON Visualizer": {
-                "colors": ("#2196F3", "#1a7fd1"),  # Blue
-                "description": "Parse and visualize JSON data with conversation formatting and search",
-            },
-            "Text Cleaner": {
-                "colors": ("#FF9800", "#e68a00"),  # Orange
-                "description": "Clean text from markdown, JSON, and code artifacts for better readability",
-            },
-            "Conversation Generator": {
-                "colors": ("#9C27B0", "#7B1FA2"),  # Purple
-                "description": "Generate AI conversation JSON by copy-pasting prompts and responses (max 20 turns)",
-            },
+        # Sort dropdown
+        self.sort_combo = QComboBox()
+        self.sort_combo.addItems([
+            "Alphabetical",
+            "Most Used",
+            "Recently Used",
+            "Favorites First"
+        ])
+        self.sort_combo.setMinimumWidth(150)
+        self.sort_combo.currentTextChanged.connect(self._on_sort_changed)
+        options_layout.addWidget(self.sort_combo)
+
+        options_layout.addStretch()
+        main_layout.addLayout(options_layout)
+
+        # ===== CATEGORY FILTER =====
+        categories = ["All", "Text", "JSON", "Conversation", "⭐ Favorites"]
+        self.category_filter = CategoryFilter(categories=categories)
+        self.category_filter.category_changed.connect(self._on_category_changed)
+        main_layout.addWidget(self.category_filter)
+
+        # Update category counts
+        self._update_category_counts()
+
+        # ===== FAVORITES SECTION =====
+        favorites = [name for name in self.tools.keys() if name in self.favorite_tools]
+        if favorites:
+            fav_header = QLabel("⭐ Favorite Tools")
+            fav_header.setFont(QFont("", 20, QFont.Bold))
+            fav_header.setStyleSheet("padding: 20px 0 12px 0;")
+            main_layout.addWidget(fav_header)
+
+            self.favorites_grid = QGridLayout()
+            self.favorites_grid.setSpacing(20)
+            self.favorites_grid.setContentsMargins(0, 0, 0, 20)
+            main_layout.addLayout(self.favorites_grid)
+
+            # Populate favorites
+            self._populate_favorites()
+
+        # ===== RECENT TOOLS SECTION =====
+        if self.recent_tools and not favorites:  # Only show if no favorites
+            recent_header = QLabel("📌 Recently Used")
+            recent_header.setFont(QFont("", 20, QFont.Bold))
+            recent_header.setStyleSheet("padding: 20px 0 12px 0;")
+            main_layout.addWidget(recent_header)
+
+            self.recent_grid = QGridLayout()
+            self.recent_grid.setSpacing(20)
+            self.recent_grid.setContentsMargins(0, 0, 0, 20)
+            main_layout.addLayout(self.recent_grid)
+
+            # Populate recent tools
+            self._populate_recent_tools()
+
+        # ===== ALL TOOLS SECTION =====
+        all_tools_header = QLabel("🛠️ All Tools")
+        all_tools_header.setFont(QFont("", 20, QFont.Bold))
+        all_tools_header.setStyleSheet("padding: 20px 0 12px 0;")
+        main_layout.addWidget(all_tools_header)
+
+        # Tools grid (responsive with larger cards)
+        self.tools_grid = QGridLayout()
+        self.tools_grid.setSpacing(20)
+        self.tools_grid.setContentsMargins(0, 0, 0, 20)
+        self.tools_grid.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        main_layout.addLayout(self.tools_grid)
+
+        # Populate tools grid
+        self._populate_tools_grid()
+
+        # Add stretch to push content to top
+        main_layout.addStretch()
+
+        # ===== FOOTER =====
+        footer_layout = QVBoxLayout()
+        footer_layout.setSpacing(12)
+
+        # Copyright
+        copyright_label = QLabel("© 2025 Nicolas Arias Garcia")
+        copyright_label.setAlignment(Qt.AlignCenter)
+        copyright_label.setFont(QFont("", 12))
+        footer_layout.addWidget(copyright_label)
+
+        # GitHub button
+        github_layout = QHBoxLayout()
+        github_layout.addStretch()
+
+        github_button = GlassButton("🚀 Visit GitHub Profile", variant="primary", size="small")
+        github_button.setToolTip("Check out my GitHub profile: @9scorp4")
+        github_button.clicked.connect(lambda: QDesktopServices.openUrl(QUrl("https://github.com/9scorp4")))
+        github_layout.addWidget(github_button)
+
+        github_layout.addStretch()
+        footer_layout.addLayout(github_layout)
+
+        main_layout.addLayout(footer_layout)
+
+        # Set content widget to scroll area
+        scroll.setWidget(content)
+
+        # Main layout for this widget
+        widget_layout = QVBoxLayout(self)
+        widget_layout.setContentsMargins(0, 0, 0, 0)
+        widget_layout.addWidget(scroll)
+
+    def _populate_favorites(self) -> None:
+        """Populate the favorites grid."""
+        # Clear existing
+        self._clear_layout(self.favorites_grid)
+
+        # Get favorite tools
+        favorites = [name for name in self.tools.keys() if name in self.favorite_tools]
+
+        # Add favorite tool cards (3 per row)
+        row, col = 0, 0
+        max_cols = 3
+        for tool_name in favorites:
+            if tool_name in self.tools:
+                card = self._create_tool_card(tool_name, highlight=True)
+                self.favorites_grid.addWidget(card, row, col)
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
+
+    def _populate_recent_tools(self) -> None:
+        """Populate the recent tools grid."""
+        # Clear existing
+        self._clear_layout(self.recent_grid)
+
+        # Add recent tool cards (3 per row)
+        row, col = 0, 0
+        max_cols = 3
+        for tool_name in self.recent_tools:
+            if tool_name in self.tools:
+                card = self._create_tool_card(tool_name)
+                self.recent_grid.addWidget(card, row, col)
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
+
+    def _populate_tools_grid(self) -> None:
+        """Populate the main tools grid with all tools."""
+        # Clear existing cards
+        self.tool_cards.clear()
+        self._clear_layout(self.tools_grid)
+
+        # Get sorted tool names
+        tool_names = self._get_sorted_tool_names()
+
+        # Create card for each tool
+        row, col = 0, 0
+        max_cols = 3  # 3 columns to fill horizontal space
+
+        for tool_name in tool_names:
+            card = self._create_tool_card(tool_name)
+            self.tool_cards.append(card)
+
+            self.tools_grid.addWidget(card, row, col)
+
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+
+        # Re-apply filters to show/hide cards
+        self._apply_filters()
+
+    def _get_sorted_tool_names(self) -> List[str]:
+        """
+        Get tool names sorted by current sort mode.
+
+        Returns:
+            List of sorted tool names
+        """
+        tool_names = list(self.tools.keys())
+
+        if self.current_sort == "alphabetical":
+            return sorted(tool_names)
+
+        elif self.current_sort == "most_used":
+            # Sort by usage count descending, then alphabetically
+            return sorted(
+                tool_names,
+                key=lambda name: (-self.usage_counts.get(name, 0), name)
+            )
+
+        elif self.current_sort == "recently_used":
+            # Sort by last used descending, then alphabetically
+            def sort_key(name):
+                last_used_str = self.last_used.get(name)
+                if last_used_str:
+                    try:
+                        return (datetime.fromisoformat(last_used_str), name)
+                    except (ValueError, AttributeError):
+                        pass
+                # Never used - put at end
+                return (datetime.min, name)
+
+            return sorted(tool_names, key=sort_key, reverse=True)
+
+        elif self.current_sort == "favorites":
+            # Favorites first, then alphabetically
+            return sorted(
+                tool_names,
+                key=lambda name: (name not in self.favorite_tools, name)
+            )
+
+        else:
+            return sorted(tool_names)
+
+    def _create_tool_card(self, tool_name: str, highlight: bool = False) -> ToolCard:
+        """
+        Create a tool card for the given tool.
+
+        Args:
+            tool_name: Name of the tool
+            highlight: Whether to highlight this card (for favorites section)
+
+        Returns:
+            ToolCard widget
+        """
+        # Get metadata or use defaults
+        metadata = self.TOOL_METADATA.get(tool_name, {
+            "category": "All",
+            "icon": "📄",
+            "shortcut": None,
+            "description": self.tools[tool_name].description
+        })
+
+        # Get usage statistics
+        usage_count = self.usage_counts.get(tool_name, 0)
+        last_used = self.last_used.get(tool_name)
+        is_favorite = tool_name in self.favorite_tools
+
+        # Create card
+        card = ToolCard(
+            tool_name=tool_name,
+            description=metadata["description"],
+            icon=metadata["icon"],
+            shortcut=metadata["shortcut"],
+            category=metadata["category"],
+            is_favorite=is_favorite,
+            usage_count=usage_count,
+            last_used=last_used,
+            highlight=highlight
+        )
+
+        # Connect signals
+        card.tool_selected.connect(self._on_tool_selected)
+        card.favorite_toggled.connect(self._on_favorite_toggled)
+
+        return card
+
+    def _on_tool_selected(self, tool_name: str) -> None:
+        """
+        Handle tool selection.
+
+        Args:
+            tool_name: Name of selected tool
+        """
+        # Update usage statistics
+        self.usage_counts[tool_name] = self.usage_counts.get(tool_name, 0) + 1
+        self.last_used[tool_name] = datetime.now().isoformat()
+        self._save_usage_statistics()
+
+        # Add to recent tools
+        self._add_recent_tool(tool_name)
+
+        # Switch to tool in main app
+        self.main_app.switch_to_tool(tool_name)
+
+    def _on_favorite_toggled(self, tool_name: str, is_favorite: bool) -> None:
+        """
+        Handle favorite toggle.
+
+        Args:
+            tool_name: Name of tool
+            is_favorite: True if now favorited
+        """
+        if is_favorite:
+            self.favorite_tools.add(tool_name)
+        else:
+            self.favorite_tools.discard(tool_name)
+
+        self._save_favorite_tools()
+        self._update_category_counts()
+
+    def _on_sort_changed(self, sort_text: str) -> None:
+        """
+        Handle sort option change.
+
+        Args:
+            sort_text: Display text of selected sort option
+        """
+        # Map display text to sort mode
+        sort_map = {
+            "Alphabetical": "alphabetical",
+            "Most Used": "most_used",
+            "Recently Used": "recently_used",
+            "Favorites First": "favorites"
         }
 
-        # Add a button for each tool
-        for tool_name, tool in self.tools.items():
-            info = tool_info.get(
-                tool_name,
-                {
-                    "colors": ("#607D8B", "#546E7A"),  # Default to gray if not found
-                    "description": tool.description,
-                },
+        self.current_sort = sort_map.get(sort_text, "alphabetical")
+        self._populate_tools_grid()
+
+    def _add_recent_tool(self, tool_name: str) -> None:
+        """
+        Add a tool to recent tools list.
+
+        Args:
+            tool_name: Name of tool to add
+        """
+        # Remove if already exists (to move to front)
+        if tool_name in self.recent_tools:
+            self.recent_tools.remove(tool_name)
+
+        # Add to front
+        self.recent_tools.append(tool_name)
+
+        # Save to settings
+        self._save_recent_tools()
+
+    def _load_recent_tools(self) -> None:
+        """Load recent tools from QSettings."""
+        settings = QSettings("AnnotationToolkit", "GUI")
+        recent = settings.value("recent_tools", [])
+        if isinstance(recent, list):
+            self.recent_tools = deque(recent, maxlen=3)
+
+    def _save_recent_tools(self) -> None:
+        """Save recent tools to QSettings."""
+        settings = QSettings("AnnotationToolkit", "GUI")
+        settings.setValue("recent_tools", list(self.recent_tools))
+
+    def _load_usage_statistics(self) -> None:
+        """Load usage statistics from QSettings."""
+        settings = QSettings("AnnotationToolkit", "GUI")
+        self.usage_counts = settings.value("usage_counts", {})
+        self.last_used = settings.value("last_used", {})
+
+        # Ensure dicts (Qt sometimes returns wrong type)
+        if not isinstance(self.usage_counts, dict):
+            self.usage_counts = {}
+        if not isinstance(self.last_used, dict):
+            self.last_used = {}
+
+    def _save_usage_statistics(self) -> None:
+        """Save usage statistics to QSettings."""
+        settings = QSettings("AnnotationToolkit", "GUI")
+        settings.setValue("usage_counts", self.usage_counts)
+        settings.setValue("last_used", self.last_used)
+
+    def _load_favorite_tools(self) -> None:
+        """Load favorite tools from QSettings."""
+        settings = QSettings("AnnotationToolkit", "GUI")
+        favorites = settings.value("favorite_tools", [])
+        if isinstance(favorites, list):
+            self.favorite_tools = set(favorites)
+        else:
+            self.favorite_tools = set()
+
+    def _save_favorite_tools(self) -> None:
+        """Save favorite tools to QSettings."""
+        settings = QSettings("AnnotationToolkit", "GUI")
+        settings.setValue("favorite_tools", list(self.favorite_tools))
+
+    def _on_search_changed(self, query: str) -> None:
+        """
+        Handle search query change.
+
+        Args:
+            query: Search query string
+        """
+        self.current_search = query.lower()
+        self._apply_filters()
+
+    def _on_search_cleared(self) -> None:
+        """Handle search cleared."""
+        self.current_search = ""
+        self._apply_filters()
+
+    def _on_category_changed(self, category: str) -> None:
+        """
+        Handle category filter change.
+
+        Args:
+            category: Selected category name
+        """
+        self.current_category = category
+        self._apply_filters()
+
+    def _apply_filters(self) -> None:
+        """Apply current search and category filters to tool cards."""
+        visible_count = 0
+
+        for card in self.tool_cards:
+            # Check search match
+            search_match = (
+                not self.current_search or
+                card.matches_search(self.current_search)
             )
 
-            default_color, hover_color = info["colors"]
-            description = info["description"]
+            # Check category match
+            if self.current_category == "⭐ Favorites":
+                category_match = card.is_favorite
+            else:
+                category_match = card.matches_category(self.current_category)
 
-            # Create custom tool button with theme-aware styling but keep original colors
-            button = ToolButton(
-                text=tool_name,
-                description=description,
-                color=default_color,
-                hover_color=hover_color,
-                dark_color=default_color,  # Keep original color in dark theme
-                dark_hover_color=hover_color,  # Keep original hover color in dark theme
-            )
+            # Show/hide card
+            should_show = search_match and category_match
+            card.setVisible(should_show)
 
-            # Add tool description as tooltip with better formatting
-            button.setToolTip(f"<b>{tool_name}</b><br>{description}")
+            if should_show:
+                visible_count += 1
 
-            # Connect button to switch_to_tool function
-            button.clicked.connect(
-                lambda checked, name=tool_name: self.main_app.switch_to_tool(name)
-            )
+        # Update category counts based on current search
+        self._update_category_counts()
 
-            tools_layout.addWidget(button)
+    def _update_category_counts(self) -> None:
+        """Update tool counts for each category."""
+        counts = {"All": 0, "Text": 0, "JSON": 0, "Conversation": 0, "⭐ Favorites": 0}
 
-        # Center the tools container
-        h_layout = QHBoxLayout()
-        h_layout.addStretch()
-        h_layout.addWidget(tools_container)
-        h_layout.addStretch()
+        for card in self.tool_cards:
+            # Count if matches current search
+            if not self.current_search or card.matches_search(self.current_search):
+                counts["All"] += 1
+                if card.category in counts:
+                    counts[card.category] += 1
+                if card.is_favorite:
+                    counts["⭐ Favorites"] += 1
 
-        layout.addLayout(h_layout)
-        layout.addStretch()
+        # Update category filter counts
+        self.category_filter.update_all_counts(counts)
 
-        # Footer with modern styling
-        footer_container = QFrame()
-        footer_container.setObjectName("footerContainer")
-        footer_container.setStyleSheet(
-            """
-            #footerContainer {
-                background-color: rgba(0, 0, 0, 0.03);
-                border-radius: 10px;
-                padding: 5px;
-            }
-            """
-        )
-        footer_layout = QVBoxLayout(footer_container)
-        footer_layout.setContentsMargins(10, 10, 10, 10)
+    def _clear_layout(self, layout: QGridLayout) -> None:
+        """
+        Clear all widgets from a layout.
 
-        footer_label = QLabel("© 2025 Nicolas Arias Garcia | CATHARSIS💫")
-        footer_label.setAlignment(Qt.AlignCenter)
-        footer_label.setObjectName("footerLabel")  # Let app-wide theme handle color
-        footer_label.setFont(QFont("Arial", 12))
-        footer_layout.addWidget(footer_label)
+        Args:
+            layout: Layout to clear
+        """
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-        layout.addWidget(footer_container)
+    def _apply_theme(self) -> None:
+        """Apply glassmorphic theme styling."""
+        theme = ThemeManager.instance().current_theme
+
+        # Main widget background
+        self.setStyleSheet(f"""
+            MainMenuWidget {{
+                background: {theme.background_primary};
+            }}
+            QLabel {{
+                color: {theme.text_primary};
+                background: transparent;
+            }}
+            QScrollArea {{
+                background: transparent;
+                border: none;
+            }}
+            QComboBox {{
+                background: {theme.surface_glass};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border_glass};
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 11pt;
+            }}
+            QComboBox:hover {{
+                border: 1px solid {theme.accent_primary};
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                padding-right: 8px;
+            }}
+            QComboBox::down-arrow {{
+                image: none;
+                border: none;
+                width: 0px;
+                height: 0px;
+            }}
+            QComboBox QAbstractItemView {{
+                background: {theme.surface_glass};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border_glass};
+                border-radius: 8px;
+                selection-background-color: {theme.accent_primary};
+                selection-color: {theme.text_primary};
+                padding: 4px;
+            }}
+        """)
