@@ -15,11 +15,6 @@ from unittest.mock import Mock, MagicMock, patch
 from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import QSettings, QByteArray, QSize, QPoint
 
-# Create QApplication instance if it doesn't exist
-app = QApplication.instance()
-if app is None:
-    app = QApplication([])
-
 from annotation_toolkit.ui.gui.utils.session_manager import SessionManager
 
 

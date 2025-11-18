@@ -11,11 +11,6 @@ from unittest.mock import Mock, MagicMock, patch
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QObject
 
-# Create QApplication instance if it doesn't exist
-app = QApplication.instance()
-if app is None:
-    app = QApplication([])
-
 from annotation_toolkit.ui.gui.utils.undo_redo import (
     UndoableCommand,
     UndoRedoManager,

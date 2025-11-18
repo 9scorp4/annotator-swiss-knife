@@ -17,11 +17,6 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtTest import QTest
 from PyQt5.QtCore import Qt, QTimer
 
-# Create QApplication instance if it doesn't exist
-app = QApplication.instance()
-if app is None:
-    app = QApplication([])
-
 from annotation_toolkit.ui.gui.utils.auto_save import AutoSaveManager
 
 
