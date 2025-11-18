@@ -28,56 +28,55 @@ if debug_logging:
 else:
     json_fixer_logger.setLevel(logging.INFO)
 
-# Add a file handler to save detailed logs
-try:
-    # Use the save directory from configuration or a temp directory
-    import tempfile
+# Add a file handler to save detailed logs (only if not already configured)
+if not json_fixer_logger.handlers:
+    try:
+        # Use user's config directory (cross-platform, works in AppImage)
+        import os
+        import tempfile
 
-    # Try to get logs directory from config, fallback to temp dir
-    logs_dir = config.get("data", "save_directory", default=None)
-    if logs_dir:
-        project_logs_dir = Path(logs_dir) / "logs"
-    else:
-        # Use system temp directory as fallback
-        project_logs_dir = Path(tempfile.gettempdir()) / "annotation_toolkit" / "logs"
+        try:
+            # Try user's config directory first
+            if os.name == 'posix':
+                config_home = os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))
+                project_logs_dir = Path(config_home) / 'annotation-toolkit' / 'logs'
+            else:
+                # Windows: use LOCALAPPDATA
+                project_logs_dir = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'AnnotationToolkit' / 'logs'
 
-    if not project_logs_dir.exists():
-        project_logs_dir.mkdir(parents=True, exist_ok=True)
+            project_logs_dir.mkdir(parents=True, exist_ok=True)
+        except (OSError, PermissionError):
+            # Fallback to temp directory if home is not writable
+            project_logs_dir = Path(tempfile.gettempdir()) / 'annotation-toolkit' / 'logs'
+            project_logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create a file handler for JSON fixing logs
-    json_log_file = project_logs_dir / "json_fixer.log"
+        # Create a file handler for JSON fixing logs
+        json_log_file = project_logs_dir / "json_fixer.log"
 
-    file_handler = logging.FileHandler(json_log_file, mode="a")
+        file_handler = logging.FileHandler(json_log_file, mode="a")
 
-    # Set the logging level for the file handler
-    if debug_logging:
-        file_handler.setLevel(logging.DEBUG)
-    else:
-        file_handler.setLevel(logging.INFO)
+        # Set the logging level for the file handler
+        if debug_logging:
+            file_handler.setLevel(logging.DEBUG)
+        else:
+            file_handler.setLevel(logging.INFO)
 
-    # Create a formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    file_handler.setFormatter(formatter)
+        # Create a formatter
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
+        file_handler.setFormatter(formatter)
 
-    # Add the handler to the logger
-    json_fixer_logger.addHandler(file_handler)
+        # Add the handler to the logger
+        json_fixer_logger.addHandler(file_handler)
 
-    # Also add a console handler for immediate feedback
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(formatter)
-    if debug_logging:
-        console_handler.setLevel(logging.DEBUG)
-    else:
+        json_fixer_logger.info(f"JSON fixer logger initialized (debug={debug_logging})")
+    except Exception as e:
+        # Create a minimal logger that works
+        console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
-    json_fixer_logger.addHandler(console_handler)
-
-    json_fixer_logger.info(f"JSON fixer logger initialized (debug={debug_logging})")
-except Exception as e:
-    # If logging setup fails, continue without file logging
-    json_fixer_logger.info(f"File logging disabled: {str(e)}")
-    pass
+        json_fixer_logger.addHandler(console_handler)
+        json_fixer_logger.warning(f"Failed to set up JSON fixer file logging: {str(e)}")
 
 
 class TokenType(Enum):
