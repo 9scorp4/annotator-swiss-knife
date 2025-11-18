@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Python 3.8 compatibility issue with Union types in DI exceptions
+- Test expectations updated for renamed "URL Dictionary to Clickables" tool
+
 ## [0.5.0] - 2025-01-18
 
 ### Added
