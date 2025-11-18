@@ -144,13 +144,13 @@ class AutoSaveManager(QObject):
                 "state": state
             }
 
+            # Rotate backups before saving new file
+            self._rotate_backups(save_key)
+
             # Save to file
             save_path = self._get_save_path(save_key)
             with open(save_path, 'w', encoding='utf-8') as f:
                 json.dump(save_data, f, indent=2, ensure_ascii=False)
-
-            # Rotate backups
-            self._rotate_backups(save_key)
 
             # Update last save time
             self._last_save_times[save_key] = time.time()

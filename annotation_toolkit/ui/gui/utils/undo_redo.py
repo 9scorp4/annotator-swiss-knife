@@ -91,7 +91,7 @@ class UndoRedoManager(QObject):
         # Connect signals
         self.stack.canUndoChanged.connect(self._on_can_undo_changed)
         self.stack.canRedoChanged.connect(self._on_can_redo_changed)
-        self.stack.cleanChanged.connect(self.clean_changed.emit)
+        self.stack.cleanChanged.connect(self._on_clean_changed)
 
         logger.debug("UndoRedoManager initialized")
 
@@ -205,6 +205,10 @@ class UndoRedoManager(QObject):
         """Handle can redo state change."""
         text = self.redo_text() if can_redo else ""
         self.can_redo_changed.emit(can_redo, text)
+
+    def _on_clean_changed(self, is_clean: bool) -> None:
+        """Handle clean state change."""
+        self.clean_changed.emit(is_clean)
 
 
 class UndoRedoMixin:

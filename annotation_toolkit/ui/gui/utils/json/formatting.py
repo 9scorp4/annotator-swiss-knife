@@ -77,8 +77,9 @@ def clean_json_string(text: str) -> str:
     # Strip leading/trailing whitespace
     text = text.strip()
 
-    # Remove trailing non-JSON characters after last }
-    match = re.search(r'(.*[}\]])\s*[^\s{}[\],:"\'0-9a-zA-Z_-]*$', text)
+    # Remove trailing non-JSON characters after last } or ]
+    # Use DOTALL flag so . matches newlines for multi-line JSON
+    match = re.search(r'(.*[}\]])\s*[^\s{}[\],:"\'0-9a-zA-Z_-]*$', text, re.DOTALL)
     if match:
         text = match.group(1)
 

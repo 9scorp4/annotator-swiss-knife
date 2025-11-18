@@ -88,7 +88,7 @@ class XmlFormatter:
             return formatted
 
         # Process XML tag pairs
-        formatted = re.sub(self._tag_pattern, format_xml_block, text, flags=re.DOTALL)
+        formatted = re.sub(self._tag_pattern, format_xml_block, text)
 
         # Handle remaining individual tags
         formatted = re.sub(
@@ -128,8 +128,7 @@ class XmlFormatter:
         formatted_text = re.sub(
             self._tag_pattern,
             format_xml_block,
-            escaped_text,
-            flags=re.DOTALL
+            escaped_text
         )
 
         return f'"{formatted_text}"'
@@ -161,7 +160,7 @@ class XmlFormatter:
                 # Single line for short content
                 return f"{open_tag}{content}{close_tag}"
 
-        return re.sub(self._tag_pattern, format_block, text, flags=re.DOTALL)
+        return re.sub(self._tag_pattern, format_block, text)
 
     def _wrap_text(self, text: str, max_width: int) -> List[str]:
         """

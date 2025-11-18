@@ -93,10 +93,6 @@ class PlainTextEdit(QTextEdit):
         """Initialize the PlainTextEdit widget."""
         super().__init__(*args, **kwargs)
 
-        # Initialize placeholder state
-        self._showing_placeholder = False
-        self._placeholder_text = ""
-
         # Set a modern monospace font for better code display
         self.setFont(QFont("SF Mono", 12) if self._is_mac() else QFont("Consolas", 12))
 
@@ -254,54 +250,3 @@ class PlainTextEdit(QTextEdit):
         if size > 8:  # Minimum font size
             font.setPointSize(size - 1)
             self.setFont(font)
-
-    def setPlaceholderText(self, text):
-        """
-        Set placeholder text with better formatting.
-
-        Args:
-            text (str): The placeholder text.
-        """
-        # Store the placeholder text
-        self._placeholder_text = text
-
-        # If the widget is empty, show the placeholder
-        if not self.toPlainText().strip():
-            self._show_placeholder()
-
-    def _show_placeholder(self):
-        """Show the placeholder text."""
-        if hasattr(self, "_placeholder_text") and not self._showing_placeholder:
-            # Set the placeholder text with a lighter color
-            self.setPlainText(self._placeholder_text)
-
-            # Make the text appear as placeholder (lighter)
-            palette = self.palette()
-            palette.setColor(QPalette.Text, QColor(128, 128, 128))
-            self.setPalette(palette)
-
-            # Mark as showing placeholder
-            self._showing_placeholder = True
-
-    def _hide_placeholder(self):
-        """Hide the placeholder text."""
-        if getattr(self, "_showing_placeholder", False):
-            self.clear()
-
-            # Restore normal text color
-            palette = self.palette()
-            palette.setColor(QPalette.Text, self.palette().color(QPalette.WindowText))
-            self.setPalette(palette)
-
-            self._showing_placeholder = False
-
-    def focusInEvent(self, event):
-        """Handle focus in event to hide placeholder."""
-        self._hide_placeholder()
-        super().focusInEvent(event)
-
-    def focusOutEvent(self, event):
-        """Handle focus out event to show placeholder if empty."""
-        if not self.toPlainText().strip():
-            self._show_placeholder()
-        super().focusOutEvent(event)
