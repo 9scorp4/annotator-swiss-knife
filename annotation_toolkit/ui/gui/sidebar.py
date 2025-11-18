@@ -209,7 +209,7 @@ class CollapsibleSidebar(QFrame):
 
         # Tool icons mapping
         tool_icons = {
-            "Dictionary to Bullet List": "📝",
+            "URL Dictionary to Clickables": "📝",
             "Text Cleaner": "✨",
             "JSON Visualizer": "👁",
             "Conversation Generator": "💬",

@@ -41,7 +41,7 @@ class DictToBulletList(TextAnnotationTool):
         Returns:
             str: The name of the tool.
         """
-        return "Dictionary to Bullet List"
+        return "URL Dictionary to Clickables"
 
     @property
     def description(self) -> str:
@@ -51,7 +51,7 @@ class DictToBulletList(TextAnnotationTool):
         Returns:
             str: A description of the tool's functionality.
         """
-        return "Converts dictionary data with URLs to formatted bullet lists with hyperlinks."
+        return "Converts dictionary data with URLs to clickable links and formatted markdown lists."
 
     def process_text(self, text: str) -> str:
         """

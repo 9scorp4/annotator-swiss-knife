@@ -321,10 +321,10 @@ class AnnotationToolkitApp(QMainWindow):
         self.main_menu = MainMenuWidget(self.tools, self)
         self.stacked_widget.addWidget(self.main_menu)
 
-        # Add Dictionary to Bullet List tool widget
-        if "Dictionary to Bullet List" in self.tools:
+        # Add URL Dictionary to Clickables tool widget
+        if "URL Dictionary to Clickables" in self.tools:
             self.dict_widget = DictToBulletWidget(
-                self.tools["Dictionary to Bullet List"]
+                self.tools["URL Dictionary to Clickables"]
             )
             self.stacked_widget.addWidget(self.dict_widget)
 
@@ -457,9 +457,9 @@ class AnnotationToolkitApp(QMainWindow):
 
         target_widget = None
 
-        if tool_name == "Dictionary to Bullet List":
+        if tool_name == "URL Dictionary to Clickables":
             target_widget = self.dict_widget
-            logger.debug(f"Switching to Dictionary to Bullet List tool")
+            logger.debug(f"Switching to URL Dictionary to Clickables tool")
         elif tool_name == "JSON Visualizer":
             target_widget = self.json_widget
             logger.debug(f"Switching to JSON Visualizer tool")

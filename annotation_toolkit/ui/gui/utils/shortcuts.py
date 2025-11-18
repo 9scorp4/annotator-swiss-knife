@@ -41,9 +41,9 @@ class ShortcutManager:
 
         # Tools
         self.register(
-            "Dictionary to Bullet List",
+            "URL Dictionary to Clickables",
             "Ctrl+1",
-            "Open Dictionary to Bullet List tool",
+            "Open URL Dictionary to Clickables tool",
             category="Tools"
         )
         self.register(
