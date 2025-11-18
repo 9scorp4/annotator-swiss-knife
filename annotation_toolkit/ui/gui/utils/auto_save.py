@@ -7,7 +7,7 @@ Provides automatic saving of widget state with crash recovery capabilities.
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Callable
+from typing import Any, Dict, List, Optional, Callable
 from datetime import datetime
 
 from PyQt5.QtCore import QTimer, QObject, pyqtSignal
@@ -289,7 +289,7 @@ class AutoSaveManager(QObject):
         safe_key = "".join(c if c.isalnum() or c in "_-" else "_" for c in save_key)
         return self.save_dir / f"{safe_key}_autosave.json"
 
-    def get_all_recovery_keys(self) -> list[str]:
+    def get_all_recovery_keys(self) -> List[str]:
         """
         Get all keys that have recovery data available.
 
