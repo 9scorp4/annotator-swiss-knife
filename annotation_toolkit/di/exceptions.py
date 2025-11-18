@@ -5,6 +5,26 @@ This module defines custom exceptions that can be raised by the DI container.
 """
 
 
+def _get_type_name(type_obj):
+    """
+    Safely get the name of a type object.
+
+    Handles special types like Union that may not have __name__ attribute
+    in Python 3.8.
+
+    Args:
+        type_obj: The type object to get the name from
+
+    Returns:
+        str: The type name or string representation
+    """
+    if hasattr(type_obj, '__name__'):
+        return type_obj.__name__
+    else:
+        # For Union types and other special types in Python 3.8
+        return str(type_obj)
+
+
 class DIException(Exception):
     """
     Base exception for dependency injection related errors.
@@ -25,14 +45,14 @@ class ServiceNotRegisteredError(DIException):
     def __init__(self, interface_type: type, message: str = None):
         """
         Initialize the exception.
-        
+
         Args:
             interface_type: The interface type that was not found
             message: Optional custom error message
         """
         if message is None:
-            message = f"Service not registered for interface: {interface_type.__name__}"
-        
+            message = f"Service not registered for interface: {_get_type_name(interface_type)}"
+
         super().__init__(message)
         self.interface_type = interface_type
 
@@ -48,15 +68,15 @@ class CircularDependencyError(DIException):
     def __init__(self, dependency_chain: list, message: str = None):
         """
         Initialize the exception.
-        
+
         Args:
             dependency_chain: The chain of dependencies that forms the cycle
             message: Optional custom error message
         """
         if message is None:
-            chain_names = [dep.__name__ for dep in dependency_chain]
+            chain_names = [_get_type_name(dep) for dep in dependency_chain]
             message = f"Circular dependency detected: {' -> '.join(chain_names)}"
-        
+
         super().__init__(message)
         self.dependency_chain = dependency_chain
 
@@ -72,17 +92,17 @@ class ServiceCreationError(DIException):
     def __init__(self, interface_type: type, original_exception: Exception = None, message: str = None):
         """
         Initialize the exception.
-        
+
         Args:
             interface_type: The interface type that could not be created
             original_exception: The original exception that caused the creation to fail
             message: Optional custom error message
         """
         if message is None:
-            message = f"Failed to create service for interface: {interface_type.__name__}"
+            message = f"Failed to create service for interface: {_get_type_name(interface_type)}"
             if original_exception:
                 message += f" - {str(original_exception)}"
-        
+
         super().__init__(message)
         self.interface_type = interface_type
         self.original_exception = original_exception
@@ -99,13 +119,13 @@ class InvalidServiceRegistrationError(DIException):
     def __init__(self, interface_type: type, message: str = None):
         """
         Initialize the exception.
-        
+
         Args:
             interface_type: The interface type with invalid registration
             message: Optional custom error message
         """
         if message is None:
-            message = f"Invalid service registration for interface: {interface_type.__name__}"
-        
+            message = f"Invalid service registration for interface: {_get_type_name(interface_type)}"
+
         super().__init__(message)
         self.interface_type = interface_type

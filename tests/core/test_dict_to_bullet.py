@@ -28,7 +28,7 @@ class TestDictToBulletList(unittest.TestCase):
 
     def test_initialization(self):
         """Test that the tool initializes with the correct default values."""
-        self.assertEqual(self.tool.name, "Dictionary to Bullet List")
+        self.assertEqual(self.tool.name, "URL Dictionary to Clickables")
         self.assertTrue(self.tool.markdown_output)
 
         # Test with markdown_output=False

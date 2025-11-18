@@ -499,13 +499,13 @@ class TestBootstrap(unittest.TestCase):
 
         # Should have the expected tools
         self.assertIsInstance(tools, dict)
-        self.assertIn("Dictionary to Bullet List", tools)
+        self.assertIn("URL Dictionary to Clickables", tools)
         self.assertIn("JSON Visualizer", tools)
         self.assertIn("Text Cleaner", tools)
         self.assertIn("Conversation Generator", tools)
 
         # Tools should be the correct types
-        dict_tool = tools["Dictionary to Bullet List"]
+        dict_tool = tools["URL Dictionary to Clickables"]
         json_tool = tools["JSON Visualizer"]
         text_tool = tools["Text Cleaner"]
         conv_tool = tools["Conversation Generator"]
@@ -585,7 +585,7 @@ class TestBootstrap(unittest.TestCase):
         # Should get at least the registered tool
         self.assertIsInstance(tools, dict)
         # DictToBulletList should be present
-        self.assertIn("Dictionary to Bullet List", tools)
+        self.assertIn("URL Dictionary to Clickables", tools)
         # Should have exactly 1 tool (others should fail gracefully)
         self.assertEqual(len(tools), 1)
 
