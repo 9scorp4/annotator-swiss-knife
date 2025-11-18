@@ -7,9 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2025-01-18
+
+### Changed
+- Reorganized UI components for better code organization:
+  * Moved PlainTextEdit and PlainLineEdit from widgets to components
+  * Extracted DraggableFieldFrame as a reusable component with callback pattern
+- Removed unused Config imports from conversation generator and text collector widgets
+
 ### Fixed
 - Python 3.8 compatibility issue with Union types in DI exceptions
 - Test expectations updated for renamed "URL Dictionary to Clickables" tool
+- JSON fixer logging now prevents duplicate handlers and handles cross-platform log directories
+- JSON fixer logging fallback improved for AppImage and restricted environments
+
+### Removed
+- Duplicate json_fixer.py from widgets directory (canonical version is in utils/json/fixer.py)
 
 ## [0.5.0] - 2025-01-18
 
