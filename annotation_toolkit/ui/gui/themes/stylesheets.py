@@ -37,6 +37,12 @@ class StylesheetGenerator:
             str: Complete application stylesheet
         """
         return f"""
+        /* ===== GLOBAL TEXT SPACING FIX ===== */
+        * {{
+            letter-spacing: 0px;
+            word-spacing: 0px;
+        }}
+
         /* ===== MAIN APPLICATION ===== */
         QMainWindow {{
             background-color: {self.theme.background_primary};
@@ -358,27 +364,27 @@ class StylesheetGenerator:
         if variant == "primary":
             bg_color = self.theme.accent_primary
             hover_color = self.theme.accent_primary_hover
-            text_color = self.theme.text_on_glass
+            text_color = "#ffffff"  # Always white for primary buttons
             glow = self.theme.accent_primary_glow
         elif variant == "secondary":
             bg_color = self.theme.accent_secondary
             hover_color = self.theme.accent_secondary
-            text_color = self.theme.text_on_glass
+            text_color = "#ffffff"  # Always white for secondary buttons
             glow = "rgba(128, 90, 213, 0.3)"
         elif variant == "success":
             bg_color = self.theme.success_color
             hover_color = self.theme.success_color
-            text_color = self.theme.text_on_glass
+            text_color = "#ffffff"  # Always white for success buttons
             glow = self.theme.success_glow
         elif variant == "danger":
             bg_color = self.theme.error_color
             hover_color = self.theme.error_color
-            text_color = self.theme.text_on_glass
+            text_color = "#ffffff"  # Always white for danger buttons
             glow = self.theme.error_glow
         elif variant == "warning":
             bg_color = self.theme.warning_color
             hover_color = self.theme.warning_color
-            text_color = self.theme.text_on_glass
+            text_color = "#ffffff"  # Always white for warning buttons
             glow = self.theme.warning_glow
         elif variant == "ghost":
             bg_color = "transparent"
@@ -388,7 +394,7 @@ class StylesheetGenerator:
         else:  # Default to primary
             bg_color = self.theme.accent_primary
             hover_color = self.theme.accent_primary_hover
-            text_color = self.theme.text_on_glass
+            text_color = "#ffffff"  # Always white for default buttons
             glow = self.theme.accent_primary_glow
 
         # Determine size properties

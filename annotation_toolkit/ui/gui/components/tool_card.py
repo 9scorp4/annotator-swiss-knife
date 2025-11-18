@@ -86,20 +86,24 @@ class ToolCard(QPushButton):
 
     def _setup_ui(self) -> None:
         """Setup the card's UI components."""
-        # Main layout with larger padding
+        # Main layout with compact padding
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(16, 16, 16, 16)  # Reduced from 20
+        main_layout.setSpacing(10)  # Reduced from 12
 
         # Header: icon + shortcut badge + favorite button
         header_layout = QHBoxLayout()
-        header_layout.setSpacing(12)
+        header_layout.setSpacing(10)  # Reduced from 12
 
-        # Icon - larger and more prominent
+        # Icon - compact size
         self.icon_label = QLabel(self.icon_char)
-        self.icon_label.setFont(QFont("", 42))  # Increased from 32
+        icon_font = QFont()
+        icon_font.setPointSize(36)  # Reduced from 42
+        icon_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        icon_font.setWordSpacing(0)
+        self.icon_label.setFont(icon_font)
         self.icon_label.setAlignment(Qt.AlignCenter)
-        self.icon_label.setFixedSize(64, 64)  # Increased from 48x48
+        self.icon_label.setFixedSize(52, 52)  # Reduced from 64x64
         header_layout.addWidget(self.icon_label)
 
         header_layout.addStretch()
@@ -108,7 +112,11 @@ class ToolCard(QPushButton):
         from PyQt5.QtWidgets import QToolButton
         self.star_button = QToolButton()
         self.star_button.setText("⭐" if self.is_favorite else "☆")
-        self.star_button.setFont(QFont("", 16))
+        star_font = QFont()
+        star_font.setPointSize(16)
+        star_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        star_font.setWordSpacing(0)
+        self.star_button.setFont(star_font)
         self.star_button.setFixedSize(24, 24)
         self.star_button.setCursor(QCursor(Qt.PointingHandCursor))
         self.star_button.setToolTip("Add to favorites" if not self.is_favorite else "Remove from favorites")
@@ -118,7 +126,10 @@ class ToolCard(QPushButton):
         # Shortcut badge (if provided)
         if self.shortcut_text:
             self.shortcut_badge = QLabel(self.shortcut_text)
-            self.shortcut_badge.setFont(QFont("SF Mono, Consolas, monospace", 9))
+            shortcut_font = QFont("monospace", 9)
+            shortcut_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+            shortcut_font.setWordSpacing(0)
+            self.shortcut_badge.setFont(shortcut_font)
             self.shortcut_badge.setAlignment(Qt.AlignCenter)
             self.shortcut_badge.setFixedHeight(20)
             self.shortcut_badge.setMinimumWidth(50)
@@ -128,19 +139,28 @@ class ToolCard(QPushButton):
 
         main_layout.addLayout(header_layout)
 
-        # Tool name - larger and bolder
+        # Tool name - compact size
         self.name_label = QLabel(self.tool_name)
-        self.name_label.setFont(QFont("", 16, QFont.Bold))  # Increased from 14
+        name_font = QFont()
+        name_font.setPointSize(14)  # Reduced from 16
+        name_font.setWeight(QFont.Bold)
+        name_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        name_font.setWordSpacing(0)
+        self.name_label.setFont(name_font)
         self.name_label.setWordWrap(True)
         self.name_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         main_layout.addWidget(self.name_label)
 
-        # Description - larger and more readable
+        # Description - compact size
         self.desc_label = QLabel(self.description)
-        self.desc_label.setFont(QFont("", 12))  # Increased from 11
+        desc_font = QFont()
+        desc_font.setPointSize(11)  # Reduced from 12
+        desc_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        desc_font.setWordSpacing(0)
+        self.desc_label.setFont(desc_font)
         self.desc_label.setWordWrap(True)
         self.desc_label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.desc_label.setMinimumHeight(50)  # Increased from 40
+        self.desc_label.setMinimumHeight(45)  # Reduced from 50
         main_layout.addWidget(self.desc_label)
 
         main_layout.addStretch()
@@ -152,7 +172,11 @@ class ToolCard(QPushButton):
 
             if self.usage_count > 0:
                 usage_label = QLabel(f"📊 {self.usage_count} uses")
-                usage_label.setFont(QFont("", 9))
+                usage_font = QFont()
+                usage_font.setPointSize(9)
+                usage_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+                usage_font.setWordSpacing(0)
+                usage_label.setFont(usage_font)
                 stats_layout.addWidget(usage_label)
 
             if self.last_used_time:
@@ -171,7 +195,11 @@ class ToolCard(QPushButton):
                         time_str = last_used_dt.strftime("%b %d")
 
                     last_used_label = QLabel(f"🕒 {time_str}")
-                    last_used_label.setFont(QFont("", 9))
+                    last_used_font = QFont()
+                    last_used_font.setPointSize(9)
+                    last_used_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+                    last_used_font.setWordSpacing(0)
+                    last_used_label.setFont(last_used_font)
                     stats_layout.addWidget(last_used_label)
                 except (ValueError, AttributeError):
                     pass
@@ -183,8 +211,8 @@ class ToolCard(QPushButton):
         else:
             self.stats_widget = None
 
-        # Set larger fixed size for better space utilization
-        self.setFixedSize(QSize(400, 280))  # Optimized for 3-column layout with minimal gaps
+        # Set compact size for better space utilization
+        self.setFixedSize(QSize(340, 240))  # Reduced from 400x280 for more compact layout
 
     def _setup_shadow_effect(self) -> None:
         """Add a subtle drop shadow effect to the card."""

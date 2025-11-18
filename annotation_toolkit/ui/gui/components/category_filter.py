@@ -55,8 +55,13 @@ class CategoryButton(QPushButton):
             text = self.category_name
 
         self.setText(text)
-        self.setFont(QFont("", 12, QFont.Bold if self.is_active_cat else QFont.Normal))
-        self.setMinimumHeight(36)
+        cat_font = QFont()
+        cat_font.setPointSize(12)
+        cat_font.setWeight(QFont.Bold if self.is_active_cat else QFont.Normal)
+        cat_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        cat_font.setWordSpacing(0)
+        self.setFont(cat_font)
+        self.setMinimumHeight(32)  # Reduced from 36
         self.setMinimumWidth(80)
 
     def _apply_theme(self) -> None:
@@ -106,7 +111,12 @@ class CategoryButton(QPushButton):
             active: Whether this category is active
         """
         self.is_active_cat = active
-        self.setFont(QFont("", 12, QFont.Bold if active else QFont.Normal))
+        cat_font = QFont()
+        cat_font.setPointSize(12)
+        cat_font.setWeight(QFont.Bold if active else QFont.Normal)
+        cat_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        cat_font.setWordSpacing(0)
+        self.setFont(cat_font)
         self._apply_theme()
 
     def update_count(self, count: int) -> None:
@@ -190,7 +200,7 @@ class CategoryFilter(QWidget):
         layout.addStretch()
 
         # Set overall height
-        self.setFixedHeight(48)
+        self.setFixedHeight(42)  # Reduced from 48
 
     def _apply_theme(self) -> None:
         """Apply glassmorphic theme styling."""

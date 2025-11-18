@@ -76,7 +76,11 @@ class SearchBar(QWidget):
 
         # Search icon
         self.search_icon = QLabel("🔍")
-        self.search_icon.setFont(QFont("", 14))
+        icon_font = QFont()
+        icon_font.setPointSize(14)
+        icon_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        icon_font.setWordSpacing(0)
+        self.search_icon.setFont(icon_font)
         self.search_icon.setFixedSize(24, 24)
         self.search_icon.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.search_icon)
@@ -84,23 +88,31 @@ class SearchBar(QWidget):
         # Search input
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(self.placeholder_text)
-        self.search_input.setFont(QFont("", 13))
-        self.search_input.setMinimumHeight(40)
+        input_font = QFont()
+        input_font.setPointSize(13)
+        input_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        input_font.setWordSpacing(0)
+        self.search_input.setFont(input_font)
+        self.search_input.setMinimumHeight(36)  # Reduced from 40
         self.search_input.setClearButtonEnabled(False)  # We'll use our own
         self.search_input.textChanged.connect(self._on_text_changed)
         layout.addWidget(self.search_input, stretch=1)
 
         # Clear button
         self.clear_button = QPushButton("✕")
-        self.clear_button.setFont(QFont("", 12))
-        self.clear_button.setFixedSize(32, 32)
+        clear_font = QFont()
+        clear_font.setPointSize(12)
+        clear_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        clear_font.setWordSpacing(0)
+        self.clear_button.setFont(clear_font)
+        self.clear_button.setFixedSize(28, 28)  # Reduced from 32x32
         self.clear_button.setCursor(Qt.PointingHandCursor)
         self.clear_button.clicked.connect(self.clear_search)
         self.clear_button.setVisible(False)  # Hide until there's text
         layout.addWidget(self.clear_button)
 
         # Set overall height
-        self.setFixedHeight(48)
+        self.setFixedHeight(44)  # Reduced from 48
 
     def _apply_theme(self) -> None:
         """Apply glassmorphic theme styling."""

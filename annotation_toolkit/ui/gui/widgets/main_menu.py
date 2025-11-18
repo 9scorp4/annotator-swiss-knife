@@ -41,7 +41,7 @@ class MainMenuWidget(QWidget):
 
     # Tool metadata with categories, icons, and shortcuts
     TOOL_METADATA = {
-        "Dictionary to Bullet List": {
+        "URL Dictionary to Clickables": {
             "category": "Text",
             "icon": "📝",
             "shortcut": "Ctrl+1",
@@ -128,22 +128,31 @@ class MainMenuWidget(QWidget):
         # Main content widget
         content = QWidget()
         main_layout = QVBoxLayout(content)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(24)
+        main_layout.setContentsMargins(20, 20, 20, 20)  # Reduced from 30
+        main_layout.setSpacing(18)  # Reduced from 24
 
         # ===== HEADER =====
         header_layout = QVBoxLayout()
-        header_layout.setSpacing(12)
+        header_layout.setSpacing(8)  # Reduced from 12
 
         # Title
         title_label = QLabel("Annotation Swiss Knife")
-        title_label.setFont(QFont("", 36, QFont.Bold))
+        title_font = QFont()
+        title_font.setPointSize(28)  # Reduced from 36
+        title_font.setWeight(QFont.Bold)
+        title_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        title_font.setWordSpacing(0)
+        title_label.setFont(title_font)
         title_label.setAlignment(Qt.AlignCenter)
         header_layout.addWidget(title_label)
 
         # Subtitle
         subtitle_label = QLabel("Select a tool to begin")
-        subtitle_label.setFont(QFont("", 15))
+        subtitle_font = QFont()
+        subtitle_font.setPointSize(13)  # Reduced from 15
+        subtitle_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        subtitle_font.setWordSpacing(0)
+        subtitle_label.setFont(subtitle_font)
         subtitle_label.setAlignment(Qt.AlignCenter)
         header_layout.addWidget(subtitle_label)
 
@@ -161,7 +170,11 @@ class MainMenuWidget(QWidget):
 
         # Sort label
         sort_label = QLabel("Sort by:")
-        sort_label.setFont(QFont("", 13))
+        sort_font = QFont()
+        sort_font.setPointSize(13)
+        sort_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        sort_font.setWordSpacing(0)
+        sort_label.setFont(sort_font)
         options_layout.addWidget(sort_label)
 
         # Sort dropdown
@@ -192,13 +205,18 @@ class MainMenuWidget(QWidget):
         favorites = [name for name in self.tools.keys() if name in self.favorite_tools]
         if favorites:
             fav_header = QLabel("⭐ Favorite Tools")
-            fav_header.setFont(QFont("", 20, QFont.Bold))
-            fav_header.setStyleSheet("padding: 20px 0 12px 0;")
+            fav_header_font = QFont()
+            fav_header_font.setPointSize(16)  # Reduced from 20
+            fav_header_font.setWeight(QFont.Bold)
+            fav_header_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+            fav_header_font.setWordSpacing(0)
+            fav_header.setFont(fav_header_font)
+            fav_header.setStyleSheet("padding: 16px 0 10px 0;")  # Reduced padding
             main_layout.addWidget(fav_header)
 
             self.favorites_grid = QGridLayout()
-            self.favorites_grid.setSpacing(20)
-            self.favorites_grid.setContentsMargins(0, 0, 0, 20)
+            self.favorites_grid.setSpacing(14)  # Reduced from 20
+            self.favorites_grid.setContentsMargins(0, 0, 0, 16)  # Reduced from 20
             main_layout.addLayout(self.favorites_grid)
 
             # Populate favorites
@@ -207,13 +225,18 @@ class MainMenuWidget(QWidget):
         # ===== RECENT TOOLS SECTION =====
         if self.recent_tools and not favorites:  # Only show if no favorites
             recent_header = QLabel("📌 Recently Used")
-            recent_header.setFont(QFont("", 20, QFont.Bold))
-            recent_header.setStyleSheet("padding: 20px 0 12px 0;")
+            recent_header_font = QFont()
+            recent_header_font.setPointSize(16)  # Reduced from 20
+            recent_header_font.setWeight(QFont.Bold)
+            recent_header_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+            recent_header_font.setWordSpacing(0)
+            recent_header.setFont(recent_header_font)
+            recent_header.setStyleSheet("padding: 16px 0 10px 0;")  # Reduced padding
             main_layout.addWidget(recent_header)
 
             self.recent_grid = QGridLayout()
-            self.recent_grid.setSpacing(20)
-            self.recent_grid.setContentsMargins(0, 0, 0, 20)
+            self.recent_grid.setSpacing(14)  # Reduced from 20
+            self.recent_grid.setContentsMargins(0, 0, 0, 16)  # Reduced from 20
             main_layout.addLayout(self.recent_grid)
 
             # Populate recent tools
@@ -221,14 +244,19 @@ class MainMenuWidget(QWidget):
 
         # ===== ALL TOOLS SECTION =====
         all_tools_header = QLabel("🛠️ All Tools")
-        all_tools_header.setFont(QFont("", 20, QFont.Bold))
-        all_tools_header.setStyleSheet("padding: 20px 0 12px 0;")
+        all_tools_header_font = QFont()
+        all_tools_header_font.setPointSize(16)  # Reduced from 20
+        all_tools_header_font.setWeight(QFont.Bold)
+        all_tools_header_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        all_tools_header_font.setWordSpacing(0)
+        all_tools_header.setFont(all_tools_header_font)
+        all_tools_header.setStyleSheet("padding: 16px 0 10px 0;")  # Reduced padding
         main_layout.addWidget(all_tools_header)
 
-        # Tools grid (responsive with larger cards)
+        # Tools grid (compact layout)
         self.tools_grid = QGridLayout()
-        self.tools_grid.setSpacing(20)
-        self.tools_grid.setContentsMargins(0, 0, 0, 20)
+        self.tools_grid.setSpacing(14)  # Reduced from 20
+        self.tools_grid.setContentsMargins(0, 0, 0, 16)  # Reduced from 20
         self.tools_grid.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         main_layout.addLayout(self.tools_grid)
 
@@ -245,7 +273,12 @@ class MainMenuWidget(QWidget):
         # Copyright
         copyright_label = QLabel("© 2025 Nicolas Arias Garcia")
         copyright_label.setAlignment(Qt.AlignCenter)
-        copyright_label.setFont(QFont("", 12))
+        copyright_font = QFont()
+        copyright_font.setPointSize(12)
+        copyright_font.setLetterSpacing(QFont.PercentageSpacing, 100)  # Normal spacing
+        copyright_font.setWordSpacing(0)  # No extra word spacing
+        copyright_label.setFont(copyright_font)
+        copyright_label.setStyleSheet("letter-spacing: 0px;")  # Ensure no letter spacing
         footer_layout.addWidget(copyright_label)
 
         # GitHub button
@@ -561,6 +594,7 @@ class MainMenuWidget(QWidget):
     def _apply_filters(self) -> None:
         """Apply current search and category filters to tool cards."""
         visible_count = 0
+        visible_cards = []
 
         for card in self.tool_cards:
             # Check search match
@@ -575,12 +609,34 @@ class MainMenuWidget(QWidget):
             else:
                 category_match = card.matches_category(self.current_category)
 
-            # Show/hide card
+            # Determine if card should be visible
             should_show = search_match and category_match
-            card.setVisible(should_show)
 
             if should_show:
+                visible_cards.append(card)
                 visible_count += 1
+
+        # Remove all cards from grid
+        for i in reversed(range(self.tools_grid.count())):
+            item = self.tools_grid.itemAt(i)
+            if item.widget():
+                self.tools_grid.removeItem(item)
+
+        # Re-add only visible cards to grid, flowing from left to right
+        max_cols = 3
+        row, col = 0, 0
+        for card in visible_cards:
+            card.setVisible(True)
+            self.tools_grid.addWidget(card, row, col)
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
+
+        # Hide cards that don't match filters
+        for card in self.tool_cards:
+            if card not in visible_cards:
+                card.setVisible(False)
 
         # Update category counts based on current search
         self._update_category_counts()

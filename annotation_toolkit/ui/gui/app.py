@@ -78,6 +78,8 @@ class AnnotationToolkitApp(QMainWindow):
 
         # Set the application font globally to prevent Qt from looking for other fonts
         app_font = QFont(getattr(self, "selected_font_family", "Arial"), 12)
+        app_font.setLetterSpacing(QFont.PercentageSpacing, 100)  # Ensure normal letter spacing
+        app_font.setWordSpacing(0)  # Ensure normal word spacing
         QApplication.instance().setFont(app_font)
 
         # Initialize configuration only once
