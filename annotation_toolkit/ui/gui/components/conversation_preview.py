@@ -8,8 +8,9 @@ from typing import List, Dict
 import json
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QTabWidget
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget, QApplication, QMessageBox
 
+from .glass_button import GlassButton
 from .json_highlighter import ConversationHighlighter
 from ..widgets.custom_widgets import PlainTextEdit
 from ..themes import ThemeManager
@@ -53,10 +54,24 @@ class ConversationPreview(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
-        # Header
+        # Header with title and copy button
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(8)
+
         self.header_label = QLabel("📺 Live Preview")
         self.header_label.setStyleSheet("font-size: 14px; font-weight: bold;")
-        layout.addWidget(self.header_label)
+        header_layout.addWidget(self.header_label)
+
+        header_layout.addStretch()
+
+        # Copy button
+        self.copy_button = GlassButton("📋 Copy JSON", variant="primary", size="small")
+        self.copy_button.setToolTip("Copy JSON to clipboard")
+        self.copy_button.clicked.connect(self._copy_json_to_clipboard)
+        self.copy_button.setEnabled(False)  # Initially disabled
+        header_layout.addWidget(self.copy_button)
+
+        layout.addLayout(header_layout)
 
         # Turn count
         self.turn_count_label = QLabel("No turns yet")
@@ -94,10 +109,13 @@ class ConversationPreview(QWidget):
         turn_count = len(conversation)
         if turn_count == 0:
             self.turn_count_label.setText("No turns yet")
+            self.copy_button.setEnabled(False)
         elif turn_count == 1:
             self.turn_count_label.setText("1 turn")
+            self.copy_button.setEnabled(True)
         else:
             self.turn_count_label.setText(f"{turn_count} turns")
+            self.copy_button.setEnabled(True)
 
         # Update text view
         self._update_text_view()
@@ -145,6 +163,31 @@ class ConversationPreview(QWidget):
         self.text_view.setPlainText("")
         self.json_view.setPlainText("")
         self.turn_count_label.setText("No turns yet")
+        self.copy_button.setEnabled(False)
+
+    def _copy_json_to_clipboard(self) -> None:
+        """Copy the JSON to clipboard."""
+        if not self.conversation_data:
+            QMessageBox.information(
+                self,
+                "No Content",
+                "There is no conversation data to copy."
+            )
+            return
+
+        # Get the JSON text
+        json_str = json.dumps(self.conversation_data, indent=2, ensure_ascii=False)
+
+        # Copy to clipboard
+        clipboard = QApplication.clipboard()
+        clipboard.setText(json_str)
+
+        # Show feedback
+        QMessageBox.information(
+            self,
+            "Copied",
+            f"JSON copied to clipboard!\n\n{len(json_str)} characters"
+        )
 
     def get_conversation_summary(self) -> str:
         """
