@@ -31,7 +31,7 @@ from PyQt5.QtWidgets import (
 from ....adapters.file_storage import DictionaryStorage
 from ....core.base import ToolExecutionError
 from ....core.text.dict_to_bullet import DictToBulletList
-from .custom_widgets import PlainTextEdit
+from ..components.text_widgets import PlainTextEdit
 from ..theme import (
     ColorPalette,
     Spacing,

@@ -27,16 +27,12 @@ from PyQt5.QtWidgets import (
     QTabWidget,
 )
 
-from ....config import Config
 from ....core.conversation.generator import ConversationGenerator
 from ....utils import logger
-from .custom_widgets import PlainTextEdit
+from ..components.text_widgets import PlainTextEdit
 from ..components import GlassButton, ConversationPreview
 from ..dialogs import TurnEditDialog, TemplateLibrary
 from ..themes import ThemeManager
-
-# Get the configuration
-config = Config()
 
 
 class DraggableTurnListWidget(QListWidget):

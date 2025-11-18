@@ -26,115 +26,12 @@ from PyQt5.QtWidgets import (
     QFileDialog,
 )
 
-from ....config import Config
 from ....core.text.text_collector import TextCollector
 from ....utils import logger
-from .custom_widgets import PlainTextEdit
+from ..components.text_widgets import PlainTextEdit
+from ..components.draggable_field import DraggableFieldFrame
 from ..themes import ThemeManager, StylesheetGenerator
 from ..components import GlassButton
-
-# Get the configuration
-config = Config()
-
-
-class DraggableFieldFrame(QFrame):
-    """
-    Draggable field frame for text collector with drag-and-drop reordering.
-    """
-
-    def __init__(self, parent=None):
-        """Initialize draggable field frame."""
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-        self.drag_start_position = None
-
-        # Add drag handle indicator (visual cue)
-        self.drag_indicator = QLabel("⋮⋮")
-        self.drag_indicator.setFont(QFont("Arial", 14, QFont.Bold))
-        self.drag_indicator.setFixedSize(20, 38)
-        self.drag_indicator.setAlignment(Qt.AlignCenter)
-        self.drag_indicator.setCursor(Qt.OpenHandCursor)
-        self.drag_indicator.setToolTip("Drag to reorder")
-
-    def mousePressEvent(self, event):
-        """Handle mouse press for drag initiation."""
-        if event.button() == Qt.LeftButton:
-            # Only start drag from drag indicator area (left 30 pixels)
-            if event.pos().x() < 50:
-                self.drag_start_position = event.pos()
-                self.drag_indicator.setCursor(Qt.ClosedHandCursor)
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        """Handle mouse move for dragging."""
-        if not (event.buttons() & Qt.LeftButton):
-            return
-        if self.drag_start_position is None:
-            return
-        if (event.pos() - self.drag_start_position).manhattanLength() < 10:
-            return
-
-        # Start drag operation
-        drag = QDrag(self)
-        mime_data = QMimeData()
-
-        # Store the widget index
-        parent_widget = self.parent()
-        if parent_widget:
-            layout = parent_widget.layout()
-            if layout:
-                index = layout.indexOf(self)
-                mime_data.setText(str(index))
-
-        drag.setMimeData(mime_data)
-        drag.exec_(Qt.MoveAction)
-        self.drag_indicator.setCursor(Qt.OpenHandCursor)
-
-    def mouseReleaseEvent(self, event):
-        """Handle mouse release."""
-        self.drag_start_position = None
-        self.drag_indicator.setCursor(Qt.OpenHandCursor)
-        super().mouseReleaseEvent(event)
-
-    def dragEnterEvent(self, event):
-        """Handle drag enter event."""
-        if event.mimeData().hasText():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event):
-        """Handle drop event to reorder fields."""
-        if not event.mimeData().hasText():
-            return
-
-        # Get the source index
-        source_index = int(event.mimeData().text())
-
-        # Get the target index (this widget's position)
-        parent_widget = self.parent()
-        if not parent_widget:
-            return
-
-        layout = parent_widget.layout()
-        if not layout:
-            return
-
-        target_index = layout.indexOf(self)
-
-        # Notify parent to reorder
-        text_collector_widget = self._find_text_collector_widget()
-        if text_collector_widget:
-            text_collector_widget._reorder_fields(source_index, target_index)
-
-        event.acceptProposedAction()
-
-    def _find_text_collector_widget(self):
-        """Find the parent TextCollectorWidget."""
-        widget = self.parent()
-        while widget:
-            if isinstance(widget, TextCollectorWidget):
-                return widget
-            widget = widget.parent()
-        return None
 
 
 class TextCollectorWidget(QWidget):
@@ -380,7 +277,7 @@ class TextCollectorWidget(QWidget):
             return
 
         # Create draggable field container
-        field_frame = DraggableFieldFrame(self.fields_container)
+        field_frame = DraggableFieldFrame(self.fields_container, reorder_callback=self._reorder_fields)
         field_frame.setObjectName("fieldFrame")
         field_layout = QHBoxLayout(field_frame)
         field_layout.setContentsMargins(8, 8, 8, 8)

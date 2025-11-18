@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidge
 
 from .glass_button import GlassButton
 from .json_highlighter import ConversationHighlighter
-from ..widgets.custom_widgets import PlainTextEdit
+from .text_widgets import PlainTextEdit
 from ..themes import ThemeManager
 
 

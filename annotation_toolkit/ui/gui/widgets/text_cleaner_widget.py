@@ -31,7 +31,7 @@ from PyQt5.QtWidgets import (
 from ....core.base import ToolExecutionError
 from ....core.text.text_cleaner import TextCleaner
 from ....utils import logger
-from .custom_widgets import PlainTextEdit
+from ..components.text_widgets import PlainTextEdit
 from ..theme import (
     ColorPalette,
     Spacing,

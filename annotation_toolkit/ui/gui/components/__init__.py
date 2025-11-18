@@ -14,6 +14,8 @@ from .category_filter import CategoryFilter, CategoryButton
 from .json_highlighter import JsonHighlighter, ConversationHighlighter
 from .json_tree_view import JsonTreeView
 from .conversation_preview import ConversationPreview
+from .text_widgets import PlainTextEdit, PlainLineEdit
+from .draggable_field import DraggableFieldFrame
 
 __all__ = [
     'ErrorBanner',
@@ -28,4 +30,7 @@ __all__ = [
     'ConversationHighlighter',
     'JsonTreeView',
     'ConversationPreview',
+    'PlainTextEdit',
+    'PlainLineEdit',
+    'DraggableFieldFrame',
 ]

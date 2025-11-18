@@ -48,8 +48,8 @@ from ..utils.json.formatting import (
     validate_json_syntax,
     get_json_summary,
 )
-from .custom_widgets import PlainTextEdit, PlainLineEdit
-from .json_fixer import JsonFixer
+from ..components.text_widgets import PlainTextEdit, PlainLineEdit
+from ....utils.json.fixer import JsonFixer
 
 
 # Configure logger

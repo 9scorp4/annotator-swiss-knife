@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (
 )
 
 from ..components import GlassButton
-from ..widgets.custom_widgets import PlainTextEdit
+from ..components.text_widgets import PlainTextEdit
 from ..themes import ThemeManager
 
 
