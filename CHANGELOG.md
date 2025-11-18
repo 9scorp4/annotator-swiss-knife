@@ -7,14 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-01-18
+
+### Added
+- Copy JSON to clipboard button in conversation preview with character count confirmation
+- Comprehensive test coverage for DI system, adapters, CLI, GUI utilities, and XML formatter
+- Theme-aware color support for GlassButton component
+
 ### Changed
+- Renamed "Dictionary to Bullet List" tool to "URL Dictionary to Clickables" for clarity
 - Updated documentation to use generic corporate terminology for broader applicability
 - Updated JSON parser patterns to use generic AI terminology
+- Reduced UI component sizes for more compact, space-efficient layout:
+  * Tool cards: 400x280 → 340x240
+  * Grid spacing: 20 → 14
+  * Section headers: 20pt → 16pt
+  * Title: 36pt → 28pt
+- GlassButton now uses theme colors instead of hardcoded values
+
+### Fixed
+- Text spacing and rendering issues across all UI components caused by Qt font system
+- Auto-save backup rotation race condition (now rotates before saving)
+- JSON cleaner regex to properly handle multi-line JSON with DOTALL flag
+- Undo/redo cleanChanged signal emission using intermediary method
+- XML formatter regex by removing unnecessary DOTALL flags
+
+### Removed
+- Problematic custom placeholder text implementation (55 lines) that interfered with Qt behavior
 
 ### Infrastructure
 - Updated macOS bundle identifiers to vendor-neutral format
 - Added uv.lock to gitignore
 - Removed unused image file from docs
+- Added 17 new test files with 6,221 lines of test coverage
 
 ## [0.4.0] - 2025-01-14
 
@@ -102,7 +127,8 @@ When creating a release:
 3. Update the version links at the bottom
 
 ### Version Links
-[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.0
 [0.4.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.4.0
 [0.3.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.3.0
 [0.2.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.2.0
