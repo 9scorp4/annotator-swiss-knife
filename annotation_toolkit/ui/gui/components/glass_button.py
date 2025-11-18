@@ -8,10 +8,12 @@ from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtGui import QColor
 
+from ..themes import ThemeManager
+
 
 class GlassButton(QPushButton):
     """
-    Glassmorphic button with hover animations.
+    Glassmorphic button with hover animations and theme support.
     """
 
     def __init__(self, text="", variant="primary", size="medium", parent=None):
@@ -22,8 +24,15 @@ class GlassButton(QPushButton):
         self.setCursor(Qt.PointingHandCursor)
         self._apply_style()
 
+        # Connect to theme changes
+        theme_manager = ThemeManager.instance()
+        theme_manager.theme_changed.connect(self._apply_style)
+
     def _apply_style(self):
-        """Apply glassmorphic styling."""
+        """Apply glassmorphic styling with theme support."""
+        # Get current theme
+        theme = ThemeManager.instance().current_theme
+
         # Size variants
         sizes = {
             "small": {"height": 32, "padding": "6px 12px", "font": "12px"},
@@ -34,35 +43,58 @@ class GlassButton(QPushButton):
         size_style = sizes.get(self.size_variant, sizes["medium"])
         self.setFixedHeight(size_style["height"])
 
-        # Color variants
-        colors = {
-            "primary": {"bg": "#4299e1", "hover": "#3182ce", "press": "#2c5282"},
-            "success": {"bg": "#38a169", "hover": "#2f855a", "press": "#276749"},
-            "danger": {"bg": "#e53e3e", "hover": "#c53030", "press": "#9b2c2c"},
-            "warning": {"bg": "#dd6b20", "hover": "#c05621", "press": "#9c4221"},
-            "ghost": {"bg": "transparent", "hover": "rgba(0,0,0,0.05)", "press": "rgba(0,0,0,0.1)"},
-        }
-
-        color = colors.get(self.variant, colors["primary"])
+        # Color variants using theme
+        if self.variant == "primary":
+            bg_color = theme.accent_primary
+            hover_color = theme.accent_primary_hover
+            text_color = "#ffffff"  # Always white for primary buttons
+            border = "none"
+        elif self.variant == "success":
+            bg_color = theme.success_color
+            hover_color = theme.success_color
+            text_color = "#ffffff"  # Always white for success buttons
+            border = "none"
+        elif self.variant == "danger":
+            bg_color = theme.error_color
+            hover_color = theme.error_color
+            text_color = "#ffffff"  # Always white for danger buttons
+            border = "none"
+        elif self.variant == "warning":
+            bg_color = theme.warning_color
+            hover_color = theme.warning_color
+            text_color = "#ffffff"  # Always white for warning buttons
+            border = "none"
+        elif self.variant == "ghost":
+            bg_color = "transparent"
+            hover_color = theme.background_glass_hover
+            text_color = theme.text_primary
+            border = f"2px solid {theme.border_glass}"
+        else:  # Default to primary
+            bg_color = theme.accent_primary
+            hover_color = theme.accent_primary_hover
+            text_color = "#ffffff"  # Always white for default buttons
+            border = "none"
 
         self.setStyleSheet(f"""
             QPushButton {{
-                background-color: {color['bg']};
-                color: white;
-                border: none;
+                background-color: {bg_color};
+                color: {text_color};
+                border: {border};
                 border-radius: 6px;
                 padding: {size_style['padding']};
                 font-size: {size_style['font']};
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background-color: {color['hover']};
+                background-color: {hover_color};
+                {f'border-color: {theme.accent_primary};' if self.variant == 'ghost' else ''}
             }}
             QPushButton:pressed {{
-                background-color: {color['press']};
+                background-color: {theme.background_glass_active if self.variant == 'ghost' else bg_color};
             }}
             QPushButton:disabled {{
-                background-color: #cbd5e0;
-                color: #a0aec0;
+                background-color: {theme.background_glass};
+                color: {theme.text_tertiary};
+                border-color: {theme.border_subtle};
             }}
         """)
