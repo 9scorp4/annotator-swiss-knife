@@ -8,8 +8,9 @@ from typing import Dict, List, Optional, Set
 from collections import deque
 from datetime import datetime
 
-from PyQt5.QtCore import Qt, QUrl, QSettings
-from PyQt5.QtGui import QFont, QDesktopServices
+from PyQt5.QtCore import Qt, QUrl, QSettings, QPropertyAnimation, QEasingCurve, QSize, QSequentialAnimationGroup, QParallelAnimationGroup, QTimer, pyqtProperty
+from PyQt5.QtGui import QFont, QDesktopServices, QPixmap, QPainter, QTransform
+from PyQt5.QtSvg import QSvgRenderer
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -19,11 +20,49 @@ from PyQt5.QtWidgets import (
     QFrame,
     QScrollArea,
     QComboBox,
+    QGraphicsOpacityEffect,
 )
+from pathlib import Path
 
 from ....core.base import AnnotationTool
 from ..components import ToolCard, SearchBar, CategoryFilter, GlassButton
 from ..themes import ThemeManager
+
+
+class AnimatedLogoLabel(QLabel):
+    """Custom QLabel with scale animation support."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._scale = 1.0
+
+    @pyqtProperty(float)
+    def scale(self):
+        return self._scale
+
+    @scale.setter
+    def scale(self, value):
+        self._scale = value
+        # Apply scale transform
+        transform = QTransform()
+        transform.scale(value, value)
+        self.setTransform(transform)
+
+    def setTransform(self, transform):
+        """Apply transform to the pixmap."""
+        if self.pixmap() and not self.pixmap().isNull():
+            original_pixmap = self.property("original_pixmap")
+            if original_pixmap:
+                # Scale the original pixmap
+                size = original_pixmap.size()
+                new_size = QSize(int(size.width() * self._scale), int(size.height() * self._scale))
+                scaled = original_pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                super().setPixmap(scaled)
+
+    def setPixmap(self, pixmap):
+        """Override to store original pixmap."""
+        self.setProperty("original_pixmap", pixmap)
+        super().setPixmap(pixmap)
 
 
 class MainMenuWidget(QWidget):
@@ -131,32 +170,82 @@ class MainMenuWidget(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20)  # Reduced from 30
         main_layout.setSpacing(18)  # Reduced from 24
 
-        # ===== HEADER =====
-        header_layout = QVBoxLayout()
-        header_layout.setSpacing(8)  # Reduced from 12
+        # ===== HERO BANNER =====
+        hero_frame = QFrame()
+        hero_frame.setObjectName("heroBanner")
+        hero_frame.setMinimumHeight(220)
 
-        # Title
-        title_label = QLabel("Annotation Swiss Knife")
-        title_font = QFont()
-        title_font.setPointSize(28)  # Reduced from 36
-        title_font.setWeight(QFont.Bold)
-        title_font.setLetterSpacing(QFont.PercentageSpacing, 100)
-        title_font.setWordSpacing(0)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)
-        header_layout.addWidget(title_label)
+        # Add dramatic shadow to hero banner
+        from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+        from PyQt5.QtGui import QColor
+        hero_shadow = QGraphicsDropShadowEffect()
+        hero_shadow.setBlurRadius(30)
+        hero_shadow.setXOffset(0)
+        hero_shadow.setYOffset(4)
+        hero_shadow.setColor(QColor(0, 0, 0, 60))
+        hero_frame.setGraphicsEffect(hero_shadow)
 
-        # Subtitle
-        subtitle_label = QLabel("Select a tool to begin")
+        hero_layout = QVBoxLayout(hero_frame)
+        hero_layout.setContentsMargins(40, 30, 40, 30)
+        hero_layout.setSpacing(16)
+
+        # SVG Logo
+        logo_label = QLabel()
+        logo_label.setAlignment(Qt.AlignCenter)
+
+        # Load and render SVG logo
+        logo_path = Path(__file__).parent.parent / "assets" / "logo.svg"
+        if logo_path.exists():
+            # Render SVG to pixmap
+            renderer = QSvgRenderer(str(logo_path))
+            pixmap = QPixmap(QSize(800, 200))
+            pixmap.fill(Qt.transparent)
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+
+            # Scale to fit nicely
+            scaled_pixmap = pixmap.scaled(700, 175, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(scaled_pixmap)
+
+            # Add subtle static glow
+            from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+            from PyQt5.QtGui import QColor
+            theme = ThemeManager.instance().current_theme
+            logo_glow = QGraphicsDropShadowEffect()
+            logo_glow.setBlurRadius(20)
+            logo_glow.setXOffset(0)
+            logo_glow.setYOffset(0)
+            if theme.is_dark:
+                logo_glow.setColor(QColor(99, 179, 237, 60))
+            else:
+                logo_glow.setColor(QColor(66, 153, 225, 40))
+            logo_label.setGraphicsEffect(logo_glow)
+        else:
+            # Fallback to text if SVG not found
+            logo_label.setText("ANNOTATION SWISS KNIFE")
+            logo_font = QFont()
+            logo_font.setPointSize(42)
+            logo_font.setWeight(QFont.ExtraBold)
+            logo_label.setFont(logo_font)
+
+        self.logo_label = logo_label
+        hero_layout.addWidget(logo_label)
+
+        # Tagline/subtitle
+        subtitle_label = QLabel("Professional Data Annotation Toolkit")
         subtitle_font = QFont()
-        subtitle_font.setPointSize(13)  # Reduced from 15
-        subtitle_font.setLetterSpacing(QFont.PercentageSpacing, 100)
+        subtitle_font.setPointSize(14)
+        subtitle_font.setWeight(QFont.Medium)
+        subtitle_font.setLetterSpacing(QFont.PercentageSpacing, 102)
         subtitle_font.setWordSpacing(0)
         subtitle_label.setFont(subtitle_font)
         subtitle_label.setAlignment(Qt.AlignCenter)
-        header_layout.addWidget(subtitle_label)
+        subtitle_label.setStyleSheet("margin-top: 8px;")
+        self.subtitle_label = subtitle_label
+        hero_layout.addWidget(subtitle_label)
 
-        main_layout.addLayout(header_layout)
+        main_layout.addWidget(hero_frame)
 
         # ===== SEARCH BAR =====
         self.search_bar = SearchBar(placeholder="Search tools...")
@@ -657,6 +746,77 @@ class MainMenuWidget(QWidget):
         # Update category filter counts
         self.category_filter.update_all_counts(counts)
 
+    def _animate_title_entrance(self) -> None:
+        """Add DRAMATIC fade-in, scale, and bounce animation for the logo (2000s style!)"""
+        if hasattr(self, 'logo_label'):
+            # Create opacity effect for logo
+            logo_opacity = QGraphicsOpacityEffect()
+            self.logo_label.setGraphicsEffect(logo_opacity)
+
+            # Create animation group for simultaneous effects
+            self.entrance_group = QParallelAnimationGroup()
+
+            # 1. FADE IN animation
+            fade_anim = QPropertyAnimation(logo_opacity, b"opacity")
+            fade_anim.setDuration(1500)  # 1.5 seconds - very visible
+            fade_anim.setStartValue(0.0)
+            fade_anim.setEndValue(1.0)
+            fade_anim.setEasingCurve(QEasingCurve.OutCubic)
+
+            # 2. SCALE/ZOOM animation (starts small, grows to normal size with bounce)
+            scale_anim = QPropertyAnimation(self.logo_label, b"scale")
+            scale_anim.setDuration(1500)  # 1.5 seconds
+            scale_anim.setStartValue(0.3)  # Start at 30% size
+            scale_anim.setEndValue(1.0)   # End at 100% size
+            scale_anim.setEasingCurve(QEasingCurve.OutBack)  # Bounce/overshoot effect!
+
+            # Add both animations to group
+            self.entrance_group.addAnimation(fade_anim)
+            self.entrance_group.addAnimation(scale_anim)
+
+            # Start the dramatic entrance!
+            self.entrance_group.start()
+
+            # After entrance, start pulsing effect
+            self.entrance_group.finished.connect(self._start_pulse_animation)
+
+    def _start_pulse_animation(self) -> None:
+        """Start continuous subtle pulsing/breathing effect (2000s nostalgia!)"""
+        if hasattr(self, 'logo_label'):
+            # Add glow effect first
+            self._add_logo_glow()
+
+            # Create pulsing scale animation (subtle breathing)
+            self.pulse_anim = QPropertyAnimation(self.logo_label, b"scale")
+            self.pulse_anim.setDuration(2000)  # 2 second pulse cycle
+            self.pulse_anim.setStartValue(1.0)
+            self.pulse_anim.setKeyValueAt(0.5, 1.05)  # Grow to 105% at midpoint
+            self.pulse_anim.setEndValue(1.0)  # Back to 100%
+            self.pulse_anim.setEasingCurve(QEasingCurve.InOutSine)  # Smooth breathing
+            self.pulse_anim.setLoopCount(-1)  # Loop forever!
+
+            # Start pulsing
+            self.pulse_anim.start()
+
+    def _add_logo_glow(self) -> None:
+        """Add glowing effect to logo (2000s WordArt style!)"""
+        if hasattr(self, 'logo_label'):
+            from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+            from PyQt5.QtGui import QColor
+
+            theme = ThemeManager.instance().current_theme
+            logo_glow = QGraphicsDropShadowEffect()
+            logo_glow.setBlurRadius(30)  # Stronger glow
+            logo_glow.setXOffset(0)
+            logo_glow.setYOffset(0)
+
+            if theme.is_dark:
+                logo_glow.setColor(QColor(99, 179, 237, 100))  # Brighter glow
+            else:
+                logo_glow.setColor(QColor(66, 153, 225, 80))
+
+            self.logo_label.setGraphicsEffect(logo_glow)
+
     def _clear_layout(self, layout: QGridLayout) -> None:
         """
         Clear all widgets from a layout.
@@ -673,18 +833,37 @@ class MainMenuWidget(QWidget):
         """Apply glassmorphic theme styling."""
         theme = ThemeManager.instance().current_theme
 
-        # Main widget background
+        # Style subtitle
+        if hasattr(self, 'subtitle_label'):
+            self.subtitle_label.setStyleSheet(f"""
+                color: {theme.text_secondary};
+                background: transparent;
+            """)
+
+        # Main widget background with hero banner styling
         self.setStyleSheet(f"""
             MainMenuWidget {{
                 background: {theme.background_primary};
+            }}
+            QFrame#heroBanner {{
+                background: {theme.gradient_glass_bg};
+                border: 1px solid {theme.border_glass};
+                border-radius: 16px;
+                margin-bottom: 12px;
             }}
             QLabel {{
                 color: {theme.text_primary};
                 background: transparent;
             }}
             QScrollArea {{
-                background: transparent;
+                background: {theme.background_primary};
                 border: none;
+            }}
+            QScrollArea > QWidget > QWidget {{
+                background: {theme.background_primary};
+            }}
+            QWidget {{
+                background: transparent;
             }}
             QComboBox {{
                 background: {theme.surface_glass};
