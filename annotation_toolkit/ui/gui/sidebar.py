@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
 )
 
 from .theme import ColorPalette, BorderRadius, Spacing
+from .themes import ThemeManager
 
 
 class SidebarButton(QPushButton):
@@ -108,28 +109,34 @@ class SidebarButton(QPushButton):
 
     def _update_style(self):
         """Update button styling based on state."""
+        theme = ThemeManager.instance().current_theme
+
         if self.is_active:
-            bg_color = ColorPalette.PRIMARY
-            text_color = "#FFFFFF"  # Pure white for maximum contrast
-            icon_color = "#FFFFFF"  # Pure white for maximum contrast
+            bg_color = theme.accent_primary
+            text_color = theme.text_on_glass
+            icon_color = theme.text_on_glass
+            hover_color = theme.accent_hover if hasattr(theme, 'accent_hover') else theme.accent_primary
+            pressed_color = theme.accent_pressed if hasattr(theme, 'accent_pressed') else theme.accent_primary
         else:
             bg_color = "transparent"
-            text_color = ColorPalette.GRAY_900  # Darker for better contrast
-            icon_color = ColorPalette.GRAY_700
+            text_color = theme.text_primary
+            icon_color = theme.text_secondary
+            hover_color = theme.surface_glass
+            pressed_color = theme.surface_glass_elevated
 
         self.setStyleSheet(f"""
             QPushButton {{
                 background-color: {bg_color};
                 border: none;
-                border-radius: {BorderRadius.LG};
+                border-radius: 8px;
                 text-align: left;
                 padding: 8px;
             }}
             QPushButton:hover {{
-                background-color: {ColorPalette.GRAY_100 if not self.is_active else ColorPalette.PRIMARY_HOVER};
+                background-color: {hover_color};
             }}
             QPushButton:pressed {{
-                background-color: {ColorPalette.GRAY_200 if not self.is_active else ColorPalette.PRIMARY_PRESSED};
+                background-color: {pressed_color};
             }}
         """)
 
@@ -164,18 +171,22 @@ class CollapsibleSidebar(QFrame):
         self.buttons = {}
         self.active_button = None
 
+        # Initialize theme manager
+        self.theme_manager = ThemeManager.instance()
+
         self._init_ui()
+
+        # Apply initial theme
+        self._apply_theme()
+
+        # Connect to theme changes
+        self.theme_manager.theme_changed.connect(self._apply_theme)
 
     def _init_ui(self):
         """Initialize the sidebar UI."""
         self.setObjectName("sidebar")
         self.setFixedWidth(220)  # Expanded width
-        self.setStyleSheet(f"""
-            #sidebar {{
-                background-color: {ColorPalette.LIGHT_BG_PRIMARY};
-                border-right: 2px solid {ColorPalette.GRAY_200};
-            }}
-        """)
+        # Styling will be applied by _apply_theme()
 
         # Main layout
         layout = QVBoxLayout(self)
@@ -187,25 +198,15 @@ class CollapsibleSidebar(QFrame):
         self.toggle_btn.setFont(QFont("Arial", 18))
         self.toggle_btn.setFixedHeight(44)
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
-        self.toggle_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {ColorPalette.GRAY_100};
-                border: none;
-                border-radius: {BorderRadius.LG};
-                padding: 8px;
-            }}
-            QPushButton:hover {{
-                background-color: {ColorPalette.GRAY_200};
-            }}
-        """)
+        # Styling will be applied by _apply_theme()
         self.toggle_btn.clicked.connect(self.toggle_collapse)
         layout.addWidget(self.toggle_btn)
 
         # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setStyleSheet(f"background-color: {ColorPalette.GRAY_200}; max-height: 1px;")
-        layout.addWidget(separator)
+        self.separator = QFrame()
+        self.separator.setFrameShape(QFrame.HLine)
+        # Styling will be applied by _apply_theme()
+        layout.addWidget(self.separator)
 
         # Tool icons mapping
         tool_icons = {
@@ -329,3 +330,40 @@ class CollapsibleSidebar(QFrame):
     def set_active_tool(self, tool_name: str):
         """Set the active tool programmatically without emitting signals."""
         self._update_active_button(tool_name)
+
+    def _apply_theme(self):
+        """Apply current theme to sidebar and all buttons."""
+        theme = self.theme_manager.current_theme
+
+        # Apply sidebar background and border
+        self.setStyleSheet(f"""
+            #sidebar {{
+                background: {theme.background_secondary};
+                border-right: 1px solid {theme.border_glass};
+            }}
+        """)
+
+        # Apply toggle button styling
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {theme.surface_glass};
+                border: none;
+                border-radius: 8px;
+                padding: 8px;
+                color: {theme.text_primary};
+            }}
+            QPushButton:hover {{
+                background: {theme.surface_glass_elevated};
+            }}
+        """)
+
+        # Apply separator styling
+        self.separator.setStyleSheet(f"""
+            background-color: {theme.border_glass};
+            max-height: 1px;
+        """)
+
+        # Update all button styles
+        for btn in self.buttons.values():
+            btn._update_style()
+        self.home_btn._update_style()

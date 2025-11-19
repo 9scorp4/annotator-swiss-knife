@@ -283,6 +283,16 @@ class AnnotationToolkitApp(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 8, 20, 8)
 
+        # Add icon to header
+        header_icon = QLabel("🔧")
+        header_icon_font = QFont(self.selected_font_family, 20)
+        header_icon.setFont(header_icon_font)
+        header_icon.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(header_icon)
+
+        # Add small spacing
+        header_layout.addSpacing(8)
+
         # Title
         title_font_size = self.config.get("ui", "font_size", default=14) + 2
         header_title = QLabel("Annotation Swiss Knife")
@@ -291,6 +301,11 @@ class AnnotationToolkitApp(QMainWindow):
         )
         header_title.setAlignment(Qt.AlignCenter)
         header_title.setObjectName("headerTitle")
+
+        # Store reference for theme updates
+        self.header_title = header_title
+        self.header_icon = header_icon
+
         header_layout.addWidget(header_title)
 
         right_layout.addWidget(header_frame)
@@ -524,6 +539,30 @@ class AnnotationToolkitApp(QMainWindow):
             )
             self.sidebar.setStyleSheet(sidebar_stylesheet)
 
+        # Apply accent color to header title
+        if hasattr(self, 'header_title'):
+            self.header_title.setStyleSheet(f"""
+                color: {theme.accent_primary};
+                background: transparent;
+            """)
+
+        # Apply subtle glow to header icon
+        if hasattr(self, 'header_icon'):
+            from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+            from PyQt5.QtGui import QColor
+
+            header_icon_glow = QGraphicsDropShadowEffect()
+            header_icon_glow.setBlurRadius(8)
+            header_icon_glow.setXOffset(0)
+            header_icon_glow.setYOffset(0)
+
+            if theme.is_dark:
+                header_icon_glow.setColor(QColor(99, 179, 237, 50))
+            else:
+                header_icon_glow.setColor(QColor(66, 153, 225, 40))
+
+            self.header_icon.setGraphicsEffect(header_icon_glow)
+
         logger.debug(f"Applied {'dark' if theme.is_dark else 'light'} glassmorphism theme")
 
     def _on_theme_changed(self, new_theme) -> None:
@@ -553,9 +592,9 @@ class AnnotationToolkitApp(QMainWindow):
         self.shortcut_manager.shortcuts["Quit"]["callback"] = self.close
 
         # Register tool shortcuts
-        if "Dictionary to Bullet List" in self.tools:
-            self.shortcut_manager.shortcuts["Dictionary to Bullet List"]["callback"] = \
-                lambda: self.switch_to_tool("Dictionary to Bullet List")
+        if "URL Dictionary to Clickables" in self.tools:
+            self.shortcut_manager.shortcuts["URL Dictionary to Clickables"]["callback"] = \
+                lambda: self.switch_to_tool("URL Dictionary to Clickables")
 
         if "JSON Visualizer" in self.tools:
             self.shortcut_manager.shortcuts["JSON Visualizer"]["callback"] = \
@@ -613,8 +652,8 @@ class AnnotationToolkitApp(QMainWindow):
 
         # Check for Ctrl+1-5 (tool shortcuts)
         if event.modifiers() == Qt.ControlModifier:
-            if event.key() == Qt.Key_1 and "Dictionary to Bullet List" in self.tools:
-                self.switch_to_tool("Dictionary to Bullet List")
+            if event.key() == Qt.Key_1 and "URL Dictionary to Clickables" in self.tools:
+                self.switch_to_tool("URL Dictionary to Clickables")
                 event.accept()
                 return
             elif event.key() == Qt.Key_2 and "JSON Visualizer" in self.tools:

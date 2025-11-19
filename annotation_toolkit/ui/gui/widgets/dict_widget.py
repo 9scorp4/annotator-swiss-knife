@@ -40,6 +40,7 @@ from ..theme import (
     get_warning_button_style,
     get_primary_button_style,
 )
+from ..themes import ThemeManager, StylesheetGenerator
 
 
 class DictToBulletWidget(QWidget):
@@ -58,11 +59,20 @@ class DictToBulletWidget(QWidget):
         self.tool = tool
         self.urls = {}  # Store URLs for list items
 
+        # Initialize theme manager
+        self.theme_manager = ThemeManager.instance()
+
         # Initialize file storage
         data_dir = Path.home() / "annotation_toolkit_data"
         self.storage = DictionaryStorage(data_dir)
 
         self._init_ui()
+
+        # Apply initial theme
+        self._apply_theme()
+
+        # Connect to theme changes
+        self.theme_manager.theme_changed.connect(self._apply_theme)
 
     def _init_ui(self) -> None:
         """
@@ -74,30 +84,14 @@ class DictToBulletWidget(QWidget):
         main_layout.setSpacing(10)
 
         # Create a splitter for input and output panes with modern styling
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(10)
-        splitter.setStyleSheet(f"""
-            QSplitter::handle {{
-                background-color: {ColorPalette.GRAY_300};
-                border-radius: 5px;
-                margin: 2px 0px;
-            }}
-            QSplitter::handle:hover {{
-                background-color: {ColorPalette.PRIMARY};
-            }}
-        """)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setHandleWidth(10)
+        # Styling will be applied by _apply_theme()
 
         # Input section with modern styling
-        input_widget = QFrame()
-        input_widget.setObjectName("jsonInputFrame")
-        input_widget.setStyleSheet(f"""
-            #jsonInputFrame {{
-                background-color: {ColorPalette.LIGHT_BG_PRIMARY};
-                border: 1px solid {ColorPalette.GRAY_200};
-                border-radius: {BorderRadius.XL};
-                padding: {Spacing.XL};
-            }}
-        """)
+        self.input_widget = QFrame()
+        self.input_widget.setObjectName("jsonInputFrame")
+        # Styling will be applied by _apply_theme()
 
         # Add shadow to input frame
         input_shadow = QGraphicsDropShadowEffect()
@@ -105,21 +99,16 @@ class DictToBulletWidget(QWidget):
         input_shadow.setXOffset(0)
         input_shadow.setYOffset(3)
         input_shadow.setColor(QColor(0, 0, 0, 40))
-        input_widget.setGraphicsEffect(input_shadow)
+        self.input_widget.setGraphicsEffect(input_shadow)
 
-        input_layout = QVBoxLayout(input_widget)
+        input_layout = QVBoxLayout(self.input_widget)
         input_layout.setContentsMargins(14, 14, 14, 14)
         input_layout.setSpacing(12)
 
-        input_label = QLabel("Input Dictionary (JSON format):")
-        input_label.setFont(QFont("Arial", 15, QFont.Bold))
-        input_label.setStyleSheet(f"""
-            QLabel {{
-                color: {ColorPalette.GRAY_900};
-                padding: 8px 0px;
-                border-bottom: 2px solid {ColorPalette.PRIMARY};
-            }}
-        """)
+        self.input_label = QLabel("Input Dictionary (JSON format):")
+        self.input_label.setFont(QFont("Arial", 15, QFont.Bold))
+        self.input_label.setObjectName("sectionLabel")
+        # Styling will be applied by _apply_theme()
 
         self.input_text = PlainTextEdit()
         self.input_text.setFont(QFont("Courier New", 12))
@@ -161,21 +150,14 @@ class DictToBulletWidget(QWidget):
         convert_btn.clicked.connect(self._convert)
         button_layout.addWidget(convert_btn)
 
-        input_layout.addWidget(input_label)
+        input_layout.addWidget(self.input_label)
         input_layout.addWidget(self.input_text)
         input_layout.addWidget(button_frame)
 
         # Output section with modern styling
-        output_widget = QFrame()
-        output_widget.setObjectName("displayFrame")
-        output_widget.setStyleSheet(f"""
-            #displayFrame {{
-                background-color: {ColorPalette.LIGHT_BG_PRIMARY};
-                border: 1px solid {ColorPalette.GRAY_200};
-                border-radius: {BorderRadius.XL};
-                padding: {Spacing.XL};
-            }}
-        """)
+        self.output_widget = QFrame()
+        self.output_widget.setObjectName("displayFrame")
+        # Styling will be applied by _apply_theme()
 
         # Add shadow to output frame
         output_shadow = QGraphicsDropShadowEffect()
@@ -183,22 +165,17 @@ class DictToBulletWidget(QWidget):
         output_shadow.setXOffset(0)
         output_shadow.setYOffset(3)
         output_shadow.setColor(QColor(0, 0, 0, 40))
-        output_widget.setGraphicsEffect(output_shadow)
+        self.output_widget.setGraphicsEffect(output_shadow)
 
-        output_layout = QVBoxLayout(output_widget)
+        output_layout = QVBoxLayout(self.output_widget)
         output_layout.setContentsMargins(14, 14, 14, 14)
         output_layout.setSpacing(12)
 
         # Clickable list section with modern styling
-        clickable_label = QLabel("Clickable Links (double-click to open):")
-        clickable_label.setFont(QFont("Arial", 15, QFont.Bold))
-        clickable_label.setStyleSheet(f"""
-            QLabel {{
-                color: {ColorPalette.GRAY_900};
-                padding: 8px 0px;
-                border-bottom: 2px solid {ColorPalette.PRIMARY};
-            }}
-        """)
+        self.clickable_label = QLabel("Clickable Links (double-click to open):")
+        self.clickable_label.setFont(QFont("Arial", 15, QFont.Bold))
+        self.clickable_label.setObjectName("sectionLabel")
+        # Styling will be applied by _apply_theme()
 
         # Use QListWidget for clickable items with better styling - theme-aware
         self.link_list = QListWidget()
@@ -223,21 +200,17 @@ class DictToBulletWidget(QWidget):
         markdown_content_layout.setContentsMargins(10, 10, 10, 10)
         markdown_content_layout.setSpacing(8)
 
-        markdown_label = QLabel("Markdown Output:")
-        markdown_label.setFont(QFont("Arial", 13, QFont.Bold))
-        markdown_label.setStyleSheet(f"""
-            QLabel {{
-                color: {ColorPalette.GRAY_900};
-                padding: 4px 0px;
-            }}
-        """)
+        self.markdown_label = QLabel("Markdown Output:")
+        self.markdown_label.setFont(QFont("Arial", 13, QFont.Bold))
+        self.markdown_label.setObjectName("subsectionLabel")
+        # Styling will be applied by _apply_theme()
 
         self.output_text = PlainTextEdit()
         self.output_text.setReadOnly(True)
         self.output_text.setFont(QFont("Courier New", 12))
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
 
-        markdown_content_layout.addWidget(markdown_label)
+        markdown_content_layout.addWidget(self.markdown_label)
         markdown_content_layout.addWidget(self.output_text)
 
         # Markdown button area with better styling
@@ -272,16 +245,16 @@ class DictToBulletWidget(QWidget):
         markdown_layout.addWidget(markdown_container, 85)  # 85% of width
         markdown_layout.addWidget(markdown_button_container, 15)  # 15% of width
 
-        output_layout.addWidget(clickable_label)
+        output_layout.addWidget(self.clickable_label)
         output_layout.addWidget(self.link_list, 50)  # 50% of height
         output_layout.addWidget(markdown_section, 50)  # 50% of height
 
         # Add widgets to splitter
-        splitter.addWidget(input_widget)
-        splitter.addWidget(output_widget)
+        self.splitter.addWidget(self.input_widget)
+        self.splitter.addWidget(self.output_widget)
 
         # Add splitter to main layout with stretch factor to fill available space
-        main_layout.addWidget(splitter, 1)
+        main_layout.addWidget(self.splitter, 1)
 
     def _load_sample_data(self) -> None:
         """
@@ -425,3 +398,59 @@ class DictToBulletWidget(QWidget):
             QMessageBox.critical(
                 self, "Error", f"An unexpected error occurred: {str(e)}"
             )
+
+    def _apply_theme(self) -> None:
+        """Apply current theme to all widgets."""
+        theme = self.theme_manager.current_theme
+
+        # Apply splitter styling
+        self.splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background-color: {theme.border_glass};
+                border-radius: 5px;
+                margin: 2px 0px;
+            }}
+            QSplitter::handle:hover {{
+                background-color: {theme.accent_primary};
+            }}
+        """)
+
+        # Apply input widget styling
+        self.input_widget.setStyleSheet(f"""
+            #jsonInputFrame {{
+                background: {theme.surface_glass};
+                border: 1px solid {theme.border_glass};
+                border-radius: 16px;
+                padding: 20px;
+            }}
+        """)
+
+        # Apply output widget styling
+        self.output_widget.setStyleSheet(f"""
+            #displayFrame {{
+                background: {theme.surface_glass};
+                border: 1px solid {theme.border_glass};
+                border-radius: 16px;
+                padding: 20px;
+            }}
+        """)
+
+        # Apply label styling
+        for label in [self.input_label, self.clickable_label]:
+            label.setStyleSheet(f"""
+                QLabel {{
+                    color: {theme.text_primary};
+                    padding: 8px 0px;
+                    border-bottom: 2px solid {theme.accent_primary};
+                    background: transparent;
+                }}
+            """)
+
+        # Apply subsection label styling
+        self.markdown_label.setStyleSheet(f"""
+            QLabel {{
+                color: {theme.text_primary};
+                padding: 4px 0px;
+                background: transparent;
+            }}
+        """)

@@ -40,6 +40,7 @@ from ..theme import (
     get_primary_button_style,
     get_warning_button_style,
 )
+from ..themes import ThemeManager
 
 
 class TextCleanerWidget(QWidget):
@@ -59,7 +60,16 @@ class TextCleanerWidget(QWidget):
         self.original_text = ""
         self.cleaned_text = ""
 
+        # Initialize theme manager
+        self.theme_manager = ThemeManager.instance()
+
         self._init_ui()
+
+        # Apply initial theme
+        self._apply_theme()
+
+        # Connect to theme changes
+        self.theme_manager.theme_changed.connect(self._apply_theme)
 
     def _init_ui(self) -> None:
         """
@@ -71,19 +81,9 @@ class TextCleanerWidget(QWidget):
         main_layout.setSpacing(12)
 
         # Create a splitter for input and output panes with better styling
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(8)
-        splitter.setStyleSheet(
-            """
-            QSplitter::handle {
-                background-color: #e0e0e0;
-                border-radius: 4px;
-            }
-            QSplitter::handle:hover {
-                background-color: #2196F3;
-            }
-        """
-        )
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setHandleWidth(8)
+        # Styling will be applied by _apply_theme()
 
         # Input section with card-like styling - theme-aware
         input_widget = QFrame()
@@ -332,11 +332,11 @@ class TextCleanerWidget(QWidget):
         output_layout.addWidget(transformed_button_frame)
 
         # Add widgets to splitter
-        splitter.addWidget(input_widget)
-        splitter.addWidget(output_widget)
+        self.splitter.addWidget(input_widget)
+        self.splitter.addWidget(output_widget)
 
         # Add splitter to main layout
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(self.splitter)
 
     def _load_sample_data(self) -> None:
         """
@@ -489,3 +489,18 @@ class TextCleanerWidget(QWidget):
             )
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not save file: {str(e)}")
+
+    def _apply_theme(self) -> None:
+        """Apply current theme to splitter."""
+        theme = self.theme_manager.current_theme
+
+        # Apply splitter styling
+        self.splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background-color: {theme.border_glass};
+                border-radius: 4px;
+            }}
+            QSplitter::handle:hover {{
+                background-color: {theme.accent_primary};
+            }}
+        """)
