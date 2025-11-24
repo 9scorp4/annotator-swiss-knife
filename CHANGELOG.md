@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2-beta.1] - 2025-11-24
+
 ### Added
 - Application SVG logo asset
 - Hero banner with animated logo to main menu
 
 ### Changed
 - Enhanced dynamic theme integration across widgets
+- All build scripts now install package in editable mode before building executables
+- Simplified PyInstaller entry point by removing runtime path manipulation
+- All PyInstaller spec files now use `collect_all()` for comprehensive package bundling
+
+### Fixed
+- **Critical**: Windows executable failing with "ModuleNotFoundError: No module named 'annotation_toolkit'"
+  - Root cause: Package not installed before PyInstaller build, causing import failures at runtime
+  - Local build scripts (Windows, macOS, Linux) now run `pip install -e .` before building
+  - Removed broken path manipulation in `build_app.py` that failed when frozen
+  - Updated all 6 spec files to properly bundle the package using PyInstaller's `collect_all()` function
+  - This fix ensures executables work correctly on all platforms
+
+### Infrastructure
+- Enhanced PyInstaller spec files with proper package collection for reliable builds
+- Improved build consistency across Windows, macOS, and Linux platforms
 
 ## [0.5.1] - 2025-01-18
 
@@ -151,7 +168,9 @@ When creating a release:
 3. Update the version links at the bottom
 
 ### Version Links
-[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.2-beta.1...HEAD
+[0.5.2-beta.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.1
+[0.5.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.1
 [0.5.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.0
 [0.4.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.4.0
 [0.3.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.3.0
