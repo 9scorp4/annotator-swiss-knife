@@ -31,6 +31,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 REQUIREMENTS_PATH="$SCRIPT_DIR/../../requirements.txt"
 pip install -r "$REQUIREMENTS_PATH"
 
+# Install the package in editable mode
+echo "Installing annotation_toolkit package..."
+PROJECT_ROOT="$SCRIPT_DIR/../.."
+pip install -e "$PROJECT_ROOT"
+
 # Install PyInstaller if not already installed
 if ! pip show pyinstaller &> /dev/null; then
     echo "Installing PyInstaller..."

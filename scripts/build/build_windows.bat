@@ -36,6 +36,10 @@ echo Installing requirements...
 :: Use the full path to requirements.txt
 pip install -r "%PROJECT_ROOT%\requirements.txt"
 
+:: Install the package in editable mode
+echo Installing annotation_toolkit package...
+pip install -e "%PROJECT_ROOT%"
+
 :: Install PyInstaller if not already installed
 pip show pyinstaller >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
