@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2-beta.3] - 2025-11-24
+
+### Fixed
+- **Critical**: Windows executable failing with "ModuleNotFoundError: No module named 'webbrowser'"
+  - Added comprehensive hiddenimports for ALL standard library modules used in the codebase
+  - Includes 40+ stdlib modules: argparse, asyncio, atexit, collections, copy, datetime, enum, functools, hashlib, html, inspect, io, json, logging, math, os, pathlib, re, shutil, statistics, sys, tempfile, threading, time, traceback, typing, urllib, uuid, weakref, webbrowser, xml, and more
+  - Also added external dependency: chardet
+  - This comprehensive approach prevents any future missing module errors
+
 ## [0.5.2-beta.2] - 2025-11-24
 
 ### Fixed
@@ -176,7 +185,8 @@ When creating a release:
 3. Update the version links at the bottom
 
 ### Version Links
-[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.2-beta.2...HEAD
+[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.2-beta.3...HEAD
+[0.5.2-beta.3]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.3
 [0.5.2-beta.2]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.2
 [0.5.2-beta.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.1
 [0.5.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.1
