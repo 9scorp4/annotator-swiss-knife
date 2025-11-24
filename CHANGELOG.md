@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2-beta.2] - 2025-11-24
+
+### Fixed
+- **Critical**: Windows executable failing with "ModuleNotFoundError: No module named 'json'"
+  - Added explicit hiddenimports for standard library modules (json, xml, re, logging, pathlib, collections)
+  - PyInstaller's collect_all() was interfering with automatic standard library detection
+  - All spec files now explicitly include commonly used standard library modules
+
 ## [0.5.2-beta.1] - 2025-11-24
 
 ### Added
@@ -168,7 +176,8 @@ When creating a release:
 3. Update the version links at the bottom
 
 ### Version Links
-[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.2-beta.1...HEAD
+[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.2-beta.2...HEAD
+[0.5.2-beta.2]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.2
 [0.5.2-beta.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.1
 [0.5.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.1
 [0.5.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.0

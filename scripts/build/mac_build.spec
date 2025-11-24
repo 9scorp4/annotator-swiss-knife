@@ -35,6 +35,15 @@ a = Analysis(
     binaries=toolkit_binaries,
     datas=toolkit_datas,
     hiddenimports=[
+        # Standard library modules (explicitly included to avoid PyInstaller issues)
+        'json',
+        'xml',
+        'xml.etree',
+        'xml.etree.ElementTree',
+        're',
+        'logging',
+        'pathlib',
+        'collections',
         # PyQt5 imports (external dependency, not covered by collect_all)
         'PyQt5',
         'PyQt5.QtCore',
