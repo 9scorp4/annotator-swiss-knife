@@ -2,6 +2,7 @@
 import os
 import sys
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_all
 
 # Get the absolute path to the project root directory
 # When running as a spec file, we need to use a different approach
@@ -23,32 +24,26 @@ try:
 except ImportError:
     version = "0.0.0.dev0"
 
+# Collect all annotation_toolkit package data, submodules, and binaries
+toolkit_datas, toolkit_binaries, toolkit_hiddenimports = collect_all('annotation_toolkit')
+
 block_cipher = None
 
 a = Analysis(
     ['build_app.py'],
     pathex=[project_root],
-    binaries=[],
-    datas=[],
+    binaries=toolkit_binaries,
+    datas=toolkit_datas,
     hiddenimports=[
+        # PyQt5 imports (external dependency, not covered by collect_all)
         'PyQt5',
         'PyQt5.QtCore',
         'PyQt5.QtGui',
         'PyQt5.QtWidgets',
+        # Other external dependencies
         'yaml',
         'markdown',
-        'annotation_toolkit',
-        'annotation_toolkit.ui',
-        'annotation_toolkit.ui.gui',
-        'annotation_toolkit.ui.gui.app',
-        'annotation_toolkit.core',
-        'annotation_toolkit.utils',
-        'annotation_toolkit.adapters',
-        'annotation_toolkit.core.conversation',
-        'annotation_toolkit.core.text',
-        'annotation_toolkit.ui.cli',
-        'annotation_toolkit.ui.gui.widgets',
-    ],
+    ] + toolkit_hiddenimports,  # Add collected hiddenimports from annotation_toolkit
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

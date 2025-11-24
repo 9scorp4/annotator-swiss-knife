@@ -3,7 +3,7 @@
 import os
 import sys
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules, collect_all
 
 # Get the absolute path to the project root directory
 # When running as a spec file, we need to use a different approach
@@ -24,6 +24,9 @@ try:
     version = __version__
 except ImportError:
     version = "0.0.0.dev0"
+
+# Collect all annotation_toolkit package data, submodules, and binaries
+toolkit_datas, toolkit_binaries, toolkit_hiddenimports = collect_all('annotation_toolkit')
 
 # Collect Qt5 plugins for Linux
 # These are critical for PyQt5 GUI to work properly on Linux (X11/Wayland)
@@ -64,32 +67,27 @@ try:
 except ImportError:
     print("Warning: Could not locate Qt5 plugins. GUI may not work correctly.")
 
+# Combine all data and binaries
+all_datas = qt5_plugins_datas + toolkit_datas
+all_binaries = qt5_binaries + toolkit_binaries
+
 block_cipher = None
 
 a = Analysis(
     ['build_app.py'],
     pathex=[project_root],
-    binaries=qt5_binaries,
-    datas=qt5_plugins_datas,
+    binaries=all_binaries,
+    datas=all_datas,
     hiddenimports=[
+        # PyQt5 imports (external dependency, not covered by collect_all)
         'PyQt5',
         'PyQt5.QtCore',
         'PyQt5.QtGui',
         'PyQt5.QtWidgets',
+        # Other external dependencies
         'yaml',
         'markdown',
-        'annotation_toolkit',
-        'annotation_toolkit.ui',
-        'annotation_toolkit.ui.gui',
-        'annotation_toolkit.ui.gui.app',
-        'annotation_toolkit.core',
-        'annotation_toolkit.utils',
-        'annotation_toolkit.adapters',
-        'annotation_toolkit.core.conversation',
-        'annotation_toolkit.core.text',
-        'annotation_toolkit.ui.cli',
-        'annotation_toolkit.ui.gui.widgets',
-    ],
+    ] + toolkit_hiddenimports,  # Add collected hiddenimports from annotation_toolkit
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
