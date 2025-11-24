@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Application SVG logo asset
+- Hero banner with animated logo to main menu
+
+### Changed
+- Enhanced dynamic theme integration across widgets
+
 ## [0.5.1] - 2025-01-18
 
 ### Changed
