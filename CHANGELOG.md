@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2-beta.4] - 2025-11-25
+
+### Fixed
+- **Critical**: Windows (and all platform) executables failing with "ModuleNotFoundError: No module named 'PyQt5.QtSvg'"
+  - Added PyQt5.QtSvg to hiddenimports in all 6 PyInstaller spec files (Windows, macOS, Linux - both regular and debug)
+  - SVG logo rendering in main menu now works correctly in all built executables
+  - Root cause: SVG logo feature was added in v0.5.2-beta.1 but PyQt5.QtSvg dependency was never added to build configuration
+
 ## [0.5.2-beta.3] - 2025-11-24
 
 ### Fixed

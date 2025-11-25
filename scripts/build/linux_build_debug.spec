@@ -126,6 +126,7 @@ a = Analysis(
         'PyQt5.QtCore',
         'PyQt5.QtGui',
         'PyQt5.QtWidgets',
+        'PyQt5.QtSvg',
         # Other external dependencies
         'yaml',
         'markdown',
