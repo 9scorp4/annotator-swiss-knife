@@ -763,3 +763,7 @@ Copyright (c) 2025 Nicolas Arias Garcia
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgements
+
+This tool was built with my colleagues in mind—the talented team I work with on data annotation projects. Your feedback, suggestions, and daily workflow challenges inspired many of the features in this toolkit. Thank you for being both the motivation and the first users of this application. Here's to making our annotation work smoother and more efficient!
