@@ -2,6 +2,10 @@
 
 A comprehensive yet simple toolkit designed to streamline various data annotation tasks. This toolkit integrates multiple annotation tools into a cohesive application with proper architecture, making it more maintainable, extensible, and user-friendly.
 
+## About
+
+Read about the development journey: [From Vibe Coding to 10,000 Lines: Building a Real Tool that Ships](https://www.linkedin.com/pulse/from-vibe-coding-10000-lines-building-real-tool-ships-arias-garcia-8tbyc/)
+
 ## Features
 
 ### Core Annotation Tools
