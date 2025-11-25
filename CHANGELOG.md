@@ -7,35 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.2-beta.4] - 2025-11-25
-
-### Fixed
-- **Critical**: Windows (and all platform) executables failing with "ModuleNotFoundError: No module named 'PyQt5.QtSvg'"
-  - Added PyQt5.QtSvg to hiddenimports in all 6 PyInstaller spec files (Windows, macOS, Linux - both regular and debug)
-  - SVG logo rendering in main menu now works correctly in all built executables
-  - Root cause: SVG logo feature was added in v0.5.2-beta.1 but PyQt5.QtSvg dependency was never added to build configuration
-
-## [0.5.2-beta.3] - 2025-11-24
-
-### Fixed
-- **Critical**: Windows executable failing with "ModuleNotFoundError: No module named 'webbrowser'"
-  - Added comprehensive hiddenimports for ALL standard library modules used in the codebase
-  - Includes 40+ stdlib modules: argparse, asyncio, atexit, collections, copy, datetime, enum, functools, hashlib, html, inspect, io, json, logging, math, os, pathlib, re, shutil, statistics, sys, tempfile, threading, time, traceback, typing, urllib, uuid, weakref, webbrowser, xml, and more
-  - Also added external dependency: chardet
-  - This comprehensive approach prevents any future missing module errors
-
-## [0.5.2-beta.2] - 2025-11-24
-
-### Fixed
-- **Critical**: Windows executable failing with "ModuleNotFoundError: No module named 'json'"
-  - Added explicit hiddenimports for standard library modules (json, xml, re, logging, pathlib, collections)
-  - PyInstaller's collect_all() was interfering with automatic standard library detection
-  - All spec files now explicitly include commonly used standard library modules
-
-## [0.5.2-beta.1] - 2025-11-24
+## [0.5.3] - 2025-11-25
 
 ### Added
-- Application SVG logo asset
+- Application SVG logo asset with animated rendering
 - Hero banner with animated logo to main menu
 
 ### Changed
@@ -45,16 +20,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All PyInstaller spec files now use `collect_all()` for comprehensive package bundling
 
 ### Fixed
-- **Critical**: Windows executable failing with "ModuleNotFoundError: No module named 'annotation_toolkit'"
-  - Root cause: Package not installed before PyInstaller build, causing import failures at runtime
-  - Local build scripts (Windows, macOS, Linux) now run `pip install -e .` before building
-  - Removed broken path manipulation in `build_app.py` that failed when frozen
-  - Updated all 6 spec files to properly bundle the package using PyInstaller's `collect_all()` function
-  - This fix ensures executables work correctly on all platforms
+- **Critical**: Series of PyInstaller bundling issues causing executable failures across all platforms:
+  - Missing `annotation_toolkit` package module
+    - Root cause: Package not installed before PyInstaller build
+    - Solution: Build scripts now run `pip install -e .` before building
+    - Removed broken path manipulation in `build_app.py` that failed when frozen
+  - Missing standard library modules (json, xml, webbrowser, and 40+ others)
+    - Root cause: PyInstaller's `collect_all()` interfered with automatic stdlib detection
+    - Solution: Added comprehensive explicit hiddenimports for all stdlib modules used in codebase
+    - Includes: argparse, asyncio, atexit, collections, copy, datetime, enum, functools, hashlib, html, inspect, io, json, logging, math, os, pathlib, re, shutil, statistics, sys, tempfile, threading, time, traceback, typing, urllib, uuid, weakref, webbrowser, xml, and more
+  - Missing `PyQt5.QtSvg` module
+    - Root cause: SVG logo feature added but PyQt5.QtSvg dependency not included in build config
+    - Solution: Added PyQt5.QtSvg to hiddenimports in all 6 spec files
+  - Also added external dependency: chardet
+- All built executables (Windows .exe, macOS .app, Linux binary) now work correctly with full functionality
 
 ### Infrastructure
 - Enhanced PyInstaller spec files with proper package collection for reliable builds
 - Improved build consistency across Windows, macOS, and Linux platforms
+- Comprehensive hiddenimports prevent future missing module errors
 
 ## [0.5.1] - 2025-01-18
 
