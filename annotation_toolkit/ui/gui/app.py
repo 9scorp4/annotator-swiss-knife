@@ -239,6 +239,14 @@ class AnnotationToolkitApp(QMainWindow):
         # Set window properties
         self.setWindowTitle("Annotation Swiss Knife")
 
+        # Set window icon
+        icon_path = Path(__file__).parent / "assets" / "icon.svg"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+            logger.debug(f"Window icon loaded from: {icon_path}")
+        else:
+            logger.warning(f"Window icon not found at: {icon_path}")
+
         # Get window size from config
         width = self.config.get("ui", "window_size", "width", default=1000)
         height = self.config.get("ui", "window_size", "height", default=700)

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 128 128"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     fill="none">
+
+  <!-- ===== TOOLS (from pivots) ===== -->
+  
+  <!-- Large blade - from RIGHT pivot -->
+  <g transform="translate(96,60)">
+    <path d="M0 0 L24 -22 Q28 -24 29 -20 L27 -17 L5 4 Q2 5 0 3 Z" 
+          fill="#E5E7EB" stroke="#9CA3AF" stroke-width="1.2"/>
+    <path d="M2 -1 L26 -20" stroke="#F3F4F6" stroke-width="1" opacity="0.7"/>
+  </g>
+
+  <!-- Small blade - from LEFT pivot -->
+  <g transform="translate(32,60)">
+    <path d="M0 0 L-25 -22 Q-30 -24 -30 -20 L-28 -17 L-5 4 Q-2 5 0 2 Z" 
+          fill="#E5E7EB" stroke="#9CA3AF" stroke-width="1.2"/>
+  </g>
+
+  <!-- Tool from LEFT pivot - going down -->
+  <g transform="translate(32,60)">
+    <path d="M0 0 L-18 14 L-22 12 L-24 16 L-20 19 L-16 17 L-3 4 Q-1 2 0 0 Z" 
+          fill="#E5E7EB" stroke="#9CA3AF" stroke-width="1"/>
+  </g>
+
+  <!-- Tool from RIGHT pivot - going down -->
+  <g transform="translate(96,60)">
+    <path d="M0 0 L14 11 L16 9 L18 11 L16 14 L12 13 L4 5 Q1 2 0 0 Z" 
+          fill="#E5E7EB" stroke="#9CA3AF" stroke-width="1"/>
+  </g>
+
+  <!-- ===== MAIN BODY ===== -->
+  
+  <!-- Body -->
+  <rect x="18" y="52" width="92" height="32" rx="6" ry="6"
+        fill="url(#bodyGrad)" stroke="#991B1B" stroke-width="1.5" />
+  
+  <!-- Highlight -->
+  <path d="M26 58 Q64 53 102 58" stroke="#FCA5A5" stroke-width="2" opacity="0.5"/>
+  
+  <!-- Seam -->
+  <line x1="22" y1="68" x2="106" y2="68" stroke="#B91C1C" stroke-width="0.8" opacity="0.4"/>
+
+  <!-- ===== PIVOTS ===== -->
+  
+  <!-- Left pivot -->
+  <g transform="translate(32,60)">
+    <circle r="7" fill="url(#screwGrad)" stroke="#6B7280" stroke-width="1.2"/>
+    <line x1="-3.5" y1="0" x2="3.5" y2="0" stroke="#9CA3AF" stroke-width="2"/>
+  </g>
+  
+  <!-- Right pivot -->
+  <g transform="translate(96,60)">
+    <circle r="7" fill="url(#screwGrad)" stroke="#6B7280" stroke-width="1.2"/>
+    <line x1="-3.5" y1="0" x2="3.5" y2="0" stroke="#9CA3AF" stroke-width="2"/>
+  </g>
+
+  <!-- ===== EMBLEM ===== -->
+  <g transform="translate(64,68)">
+    <!-- Shield -->
+    <path d="M-11 -10 Q-11 -13 -8 -13 L8 -13 Q11 -13 11 -10 L11 4 Q11 11 0 14 Q-11 11 -11 4 Z"
+          fill="#FFFFFF" stroke="#DC2626" stroke-width="1.2"/>
+    <!-- Cross -->
+    <rect x="-2" y="-9" width="4" height="13" rx="0.5" fill="#DC2626"/>
+    <rect x="-6.5" y="-4" width="13" height="4" rx="0.5" fill="#DC2626"/>
+  </g>
+
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="bodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F87171"/>
+      <stop offset="25%" stop-color="#EF4444"/>
+      <stop offset="60%" stop-color="#DC2626"/>
+      <stop offset="100%" stop-color="#B91C1C"/>
+    </linearGradient>
+    
+    <radialGradient id="screwGrad" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#E5E7EB"/>
+      <stop offset="100%" stop-color="#9CA3AF"/>
+    </radialGradient>
+  </defs>
+
+</svg>

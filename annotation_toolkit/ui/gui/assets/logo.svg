@@ -1,116 +1,167 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <!-- Metallic gradient for text (chrome/silver effect) -->
-    <linearGradient id="metalGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
-      <stop offset="15%" style="stop-color:#e8f4f8;stop-opacity:1" />
-      <stop offset="30%" style="stop-color:#b8d4e8;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#8ab4d4;stop-opacity:1" />
-      <stop offset="70%" style="stop-color:#6a9ec5;stop-opacity:1" />
-      <stop offset="85%" style="stop-color:#5a8db5;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#4a7da5;stop-opacity:1" />
-    </linearGradient>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 280 160"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     fill="none">
 
-    <!-- RAINBOW gradient (2000s style!) -->
-    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#ff0000;stop-opacity:1" />    <!-- Red -->
-      <stop offset="17%" style="stop-color:#ff8800;stop-opacity:1" />   <!-- Orange -->
-      <stop offset="33%" style="stop-color:#ffff00;stop-opacity:1" />   <!-- Yellow -->
-      <stop offset="50%" style="stop-color:#00ff00;stop-opacity:1" />   <!-- Green -->
-      <stop offset="67%" style="stop-color:#00ffff;stop-opacity:1" />   <!-- Cyan -->
-      <stop offset="83%" style="stop-color:#0088ff;stop-opacity:1" />   <!-- Blue -->
-      <stop offset="100%" style="stop-color:#8800ff;stop-opacity:1" />  <!-- Purple -->
-    </linearGradient>
+  <!-- Shadow -->
+  <ellipse cx="140" cy="145" rx="80" ry="10" fill="#000" opacity="0.1" />
 
-    <!-- Glossy highlight gradient -->
-    <linearGradient id="glossHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.8" />
-      <stop offset="50%" style="stop-color:#ffffff;stop-opacity:0.3" />
-      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
-    </linearGradient>
-
-    <!-- Glow filter for 2000s effect -->
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
-    <!-- Drop shadow for depth -->
-    <filter id="dropShadow">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-      <feOffset dx="2" dy="4" result="offsetblur"/>
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="0.5"/>
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-
-    <!-- Bevel effect -->
-    <filter id="bevel">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/>
-      <feSpecularLighting in="blur" surfaceScale="5" specularConstant="0.8"
-                          specularExponent="20" lighting-color="#ffffff" result="spec">
-        <fePointLight x="-5000" y="-10000" z="20000"/>
-      </feSpecularLighting>
-      <feComposite in="spec" in2="SourceAlpha" operator="in" result="specOut"/>
-      <feComposite in="SourceGraphic" in2="specOut" operator="arithmetic"
-                   k1="0" k2="1" k3="1" k4="0"/>
-    </filter>
-  </defs>
-
-  <!-- Background glow circle (rainbow!) -->
-  <circle cx="70" cy="100" r="60" fill="url(#accentGradient)" opacity="0.25" filter="url(#glow)"/>
-
-  <!-- Tool icon (Swiss knife inspired) -->
-  <g transform="translate(70, 100)" filter="url(#dropShadow)">
-    <!-- Main knife body -->
-    <path d="M -30,-20 L 30,-20 L 35,-15 L 35,15 L 30,20 L -30,20 L -35,15 L -35,-15 Z"
-          fill="url(#metalGradient)" stroke="#2d3748" stroke-width="2"/>
-
-    <!-- Blade 1 -->
-    <path d="M -25,-10 L -25,-40 L -20,-45 L -15,-40 L -15,-10 Z"
-          fill="url(#accentGradient)" stroke="#2d3748" stroke-width="1.5"/>
-
-    <!-- Blade 2 -->
-    <path d="M -5,-10 L -5,-35 L 0,-38 L 5,-35 L 5,-10 Z"
-          fill="url(#accentGradient)" stroke="#2d3748" stroke-width="1.5"/>
-
-    <!-- Blade 3 -->
-    <path d="M 15,-10 L 15,-30 L 20,-32 L 25,-30 L 25,-10 Z"
-          fill="url(#accentGradient)" stroke="#2d3748" stroke-width="1.5"/>
-
-    <!-- Central gear/tool symbol -->
-    <circle cx="0" cy="0" r="12" fill="url(#accentGradient)" stroke="#2d3748" stroke-width="1.5"/>
-    <circle cx="0" cy="0" r="6" fill="#ffffff" opacity="0.9"/>
-
-    <!-- Highlight gloss -->
-    <ellipse cx="-5" cy="-5" rx="15" ry="10" fill="url(#glossHighlight)" opacity="0.6"/>
+  <!-- ===== TOOLS (emerging from pivots) ===== -->
+  
+  <!-- Large blade - from RIGHT pivot, angled up-right -->
+  <g transform="translate(210,85)">
+    <path d="M0 0 
+             L50 -42 
+             Q58 -44 60 -38
+             L58 -34
+             L10 7
+             Q4 9 0 5 Z" 
+          fill="url(#bladeGradient)" stroke="#9CA3AF" stroke-width="1.5"/>
+    <!-- Blade spine -->
+    <path d="M4 -2 L54 -40" stroke="#D1D5DB" stroke-width="2" opacity="0.8"/>
+    <!-- Edge highlight -->
+    <path d="M10 7 L58 -34" stroke="#fff" stroke-width="0.6" opacity="0.5"/>
   </g>
 
-  <!-- Text: ANNOTATION SWISS KNIFE (ONE LINE! RAINBOW!) -->
-  <g filter="url(#bevel)">
-    <text x="150" y="115" font-family="Impact, Arial Black, sans-serif" font-size="48" font-weight="900"
-          fill="url(#accentGradient)" filter="url(#dropShadow)" letter-spacing="5">
-      ANNOTATION SWISS KNIFE
-    </text>
+  <!-- Small blade - from LEFT pivot, angled up-left -->
+  <g transform="translate(70,85)">
+    <path d="M0 0 
+             L-45 -40 
+             Q-52 -42 -53 -36
+             L-50 -32
+             L-8 6
+             Q-3 8 0 4 Z" 
+          fill="url(#bladeGradient)" stroke="#9CA3AF" stroke-width="1.5"/>
+    <!-- Blade spine -->
+    <path d="M-4 -1 L-48 -37" stroke="#D1D5DB" stroke-width="1.5" opacity="0.8"/>
   </g>
 
-  <!-- Glossy highlight on text -->
-  <text x="150" y="115" font-family="Impact, Arial Black, sans-serif" font-size="48" font-weight="900"
-        fill="url(#glossHighlight)" opacity="0.5" letter-spacing="5">
-    ANNOTATION SWISS KNIFE
+  <!-- Can opener - from LEFT pivot, angled down-left -->
+  <g transform="translate(70,85)">
+    <path d="M0 0 
+             L-35 25 
+             L-42 22
+             L-44 28
+             L-38 32
+             L-32 30
+             L-6 6
+             Q-2 3 0 0 Z" 
+          fill="url(#bladeGradient)" stroke="#9CA3AF" stroke-width="1.2"/>
+    <!-- Hook detail -->
+    <path d="M-42 22 L-44 28 L-38 32" stroke="#6B7280" stroke-width="1.5" fill="none"/>
+  </g>
+
+  <!-- Screwdriver/file - from RIGHT pivot, angled down-right -->
+  <g transform="translate(210,85)">
+    <path d="M0 0 
+             L30 22
+             L32 20
+             L35 22
+             L32 26
+             L28 25
+             L5 6
+             Q2 3 0 0 Z" 
+          fill="url(#bladeGradient)" stroke="#9CA3AF" stroke-width="1.2"/>
+    <!-- Flat tip -->
+    <path d="M30 22 L35 22 L32 26 L28 25" stroke="#6B7280" stroke-width="1" fill="#D1D5DB"/>
+  </g>
+
+  <!-- Awl/Reamer - from CENTER, pointing straight up -->
+  <g transform="translate(140,75)">
+    <path d="M-4 0 
+             L-2 -55 
+             L0 -62
+             L2 -55
+             L4 0 Z" 
+          fill="url(#bladeGradient)" stroke="#9CA3AF" stroke-width="1"/>
+    <!-- Center line -->
+    <line x1="0" y1="-5" x2="0" y2="-58" stroke="#D1D5DB" stroke-width="1" opacity="0.7"/>
+  </g>
+
+  <!-- ===== MAIN BODY ===== -->
+  
+  <!-- Back layer (darker) -->
+  <rect x="45" y="70" width="190" height="50" rx="8" ry="8"
+        fill="#991B1B" stroke="#7F1D1D" stroke-width="1" />
+
+  <!-- Front panel -->
+  <rect x="45" y="70" width="190" height="46" rx="8" ry="8"
+        fill="url(#bodyGradient)" stroke="#991B1B" stroke-width="2" />
+  
+  <!-- Top highlight -->
+  <path d="M55 78 Q140 72 225 78"
+        stroke="#FCA5A5" stroke-width="2.5" opacity="0.5" fill="none"/>
+  
+  <!-- Middle seam line -->
+  <line x1="50" y1="93" x2="230" y2="93" stroke="#B91C1C" stroke-width="1" opacity="0.5"/>
+
+  <!-- ===== PIVOT SCREWS ===== -->
+  
+  <!-- Left pivot -->
+  <g transform="translate(70,85)">
+    <circle r="10" fill="url(#screwGradient)" stroke="#6B7280" stroke-width="1.5"/>
+    <line x1="-5" y1="0" x2="5" y2="0" stroke="#9CA3AF" stroke-width="2.5"/>
+  </g>
+
+  <!-- Center pivot -->
+  <g transform="translate(140,85)">
+    <circle r="10" fill="url(#screwGradient)" stroke="#6B7280" stroke-width="1.5"/>
+    <line x1="-5" y1="0" x2="5" y2="0" stroke="#9CA3AF" stroke-width="2.5"/>
+  </g>
+
+  <!-- Right pivot -->
+  <g transform="translate(210,85)">
+    <circle r="10" fill="url(#screwGradient)" stroke="#6B7280" stroke-width="1.5"/>
+    <line x1="-5" y1="0" x2="5" y2="0" stroke="#9CA3AF" stroke-width="2.5"/>
+  </g>
+
+  <!-- ===== EMBLEM (on body between left and center pivot) ===== -->
+  
+  <g transform="translate(105,93)">
+    <!-- Shield background -->
+    <path d="M-14 -12 Q-14 -15 -11 -15 L11 -15 Q14 -15 14 -12 L14 6 Q14 14 0 18 Q-14 14 -14 6 Z"
+          fill="#FFFFFF" stroke="#DC2626" stroke-width="1.5"/>
+    
+    <!-- Swiss Cross -->
+    <rect x="-2.5" y="-10" width="5" height="16" rx="0.8" fill="#DC2626"/>
+    <rect x="-8" y="-4" width="16" height="5" rx="0.8" fill="#DC2626"/>
+  </g>
+
+  <!-- ===== "ASK" TEXT (on body between center and right pivot) ===== -->
+  <text x="175" y="97"
+        font-family="'SF Pro Display', 'Segoe UI', Arial, sans-serif"
+        font-size="14"
+        font-weight="700"
+        fill="#FFFFFF"
+        text-anchor="middle"
+        opacity="0.9">
+    ASK
   </text>
 
-  <!-- Accent line under text (2000s style) -->
-  <rect x="150" y="128" width="640" height="5" fill="url(#accentGradient)" rx="2" filter="url(#glow)"/>
+  <!-- ===== GRADIENTS ===== -->
+  <defs>
+    <!-- Blade gradient -->
+    <linearGradient id="bladeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F9FAFB"/>
+      <stop offset="40%" stop-color="#E5E7EB"/>
+      <stop offset="100%" stop-color="#D1D5DB"/>
+    </linearGradient>
 
-  <!-- Shine effect overlay -->
-  <rect x="150" y="128" width="640" height="2" fill="#ffffff" opacity="0.6" rx="1"/>
+    <!-- Body gradient (Swiss red) -->
+    <linearGradient id="bodyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F87171"/>
+      <stop offset="20%" stop-color="#EF4444"/>
+      <stop offset="50%" stop-color="#DC2626"/>
+      <stop offset="100%" stop-color="#B91C1C"/>
+    </linearGradient>
+
+    <!-- Screw gradient -->
+    <radialGradient id="screwGradient" cx="35%" cy="35%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="60%" stop-color="#E5E7EB"/>
+      <stop offset="100%" stop-color="#9CA3AF"/>
+    </radialGradient>
+  </defs>
+
 </svg>

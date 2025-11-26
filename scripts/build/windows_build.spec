@@ -145,7 +145,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='annotation_toolkit/ui/gui/assets/icon.ico',
     version=os.path.join(current_dir, 'file_version_info.txt') if os.path.exists(os.path.join(current_dir, 'file_version_info.txt')) else None,
 )
 

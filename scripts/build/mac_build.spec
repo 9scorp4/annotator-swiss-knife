@@ -116,7 +116,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='annotation_toolkit/ui/gui/assets/icon.icns',
 )
 
 coll = COLLECT(
@@ -133,7 +133,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='AnnotationToolkit.app',
-    icon=None,
+    icon='annotation_toolkit/ui/gui/assets/icon.icns',
     bundle_identifier='com.annotationtoolkit.app',
     info_plist={
         'NSHighResolutionCapable': 'True',

@@ -120,7 +120,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,
+    icon='annotation_toolkit/ui/gui/assets/icon_256.png',
 )
 
 coll = COLLECT(
