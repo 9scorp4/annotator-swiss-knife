@@ -100,37 +100,33 @@ jobs:
           fi
 
       # macOS Build
-      - name: Build macOS executables (Release + Debug)
+      - name: Build macOS executable
         if: matrix.os == 'macos-latest'
         working-directory: scripts/build
         run: |
           pyinstaller mac_build.spec --distpath ../../dist --clean --noconfirm
-          pyinstaller mac_build_debug.spec --distpath ../../dist --clean --noconfirm
 
-      - name: Create macOS archives
+      - name: Create macOS archive
         if: matrix.os == 'macos-latest'
         run: |
           cd dist
           VERSION="${{ steps.get_version.outputs.version }}"
-          zip -r -q "AnnotationToolkit-${VERSION}-macOS-release.zip" AnnotationToolkit.app
-          zip -r -q "AnnotationToolkit-${VERSION}-macOS-debug.zip" AnnotationToolkit-Debug.app
+          zip -r -q "AnnotationToolkit-${VERSION}-macOS.zip" AnnotationToolkit.app
 
       # Windows Build
-      - name: Build Windows executables (Release + Debug)
+      - name: Build Windows executable
         if: matrix.os == 'windows-latest'
         working-directory: scripts/build
         run: |
           pyinstaller windows_build.spec --distpath ../../dist --clean --noconfirm
-          pyinstaller windows_build_debug.spec --distpath ../../dist --clean --noconfirm
 
-      - name: Create Windows archives
+      - name: Create Windows archive
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           cd dist
           $VERSION = "${{ steps.get_version.outputs.version }}"
-          Compress-Archive -Path "AnnotationToolkit" -DestinationPath "AnnotationToolkit-${VERSION}-Windows-release.zip" -Force
-          Compress-Archive -Path "AnnotationToolkit-Debug" -DestinationPath "AnnotationToolkit-${VERSION}-Windows-debug.zip" -Force
+          Compress-Archive -Path "AnnotationToolkit" -DestinationPath "AnnotationToolkit-${VERSION}-Windows.zip" -Force
 
       # Linux Build
       - name: Install Linux dependencies
@@ -139,14 +135,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget fuse libfuse2 imagemagick
 
-      - name: Build Linux debug executable
-        if: matrix.platform == 'Linux'
-        working-directory: scripts/build
-        run: |
-          pyinstaller linux_build_debug.spec --distpath ../../dist --clean --noconfirm
-          chmod +x ../../dist/AnnotationToolkit-Debug/AnnotationToolkit-Debug
-
-      - name: Build Linux AppImage (Release)
+      - name: Build Linux AppImage
         if: matrix.platform == 'Linux'
         run: |
           cd scripts/build
@@ -165,13 +154,6 @@ jobs:
           else
             echo "Warning: AppImage not found"
           fi
-
-      - name: Create Linux debug archive
-        if: matrix.platform == 'Linux'
-        run: |
-          cd dist
-          VERSION="${{ steps.get_version.outputs.version }}"
-          tar czf "AnnotationToolkit-${VERSION}-Linux-debug.tar.gz" AnnotationToolkit-Debug/
 
       # Generate checksums for all platforms
       - name: Generate checksums
@@ -253,17 +235,9 @@ jobs:
 
           ### 📦 Downloads
 
-          This release includes both **release** and **debug** builds for each platform.
-
-          **Release builds** (recommended for most users):
-          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS-release.zip`
-          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows-release.zip`
+          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS.zip`
+          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows.zip`
           - **Linux**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
-
-          **Debug builds** (for troubleshooting - shows console output):
-          - **macOS**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-macOS-debug.zip`
-          - **Windows**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Windows-debug.zip`
-          - **Linux**: `AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux-debug.tar.gz`
 
           ### 🔐 Verification
 
@@ -273,46 +247,26 @@ jobs:
 
           **macOS**:
           1. Download and extract the ZIP file
-          2. Move `AnnotationToolkit.app` (or `AnnotationToolkit-Debug.app`) to your Applications folder
+          2. Move `AnnotationToolkit.app` to your Applications folder
           3. Right-click and select "Open" to bypass Gatekeeper on first launch
 
           **Windows**:
           1. Download and extract the ZIP file
-          2. Run `AnnotationToolkit.exe` (or `AnnotationToolkit-Debug.exe`)
+          2. Run `AnnotationToolkit.exe`
           3. You may see a SmartScreen warning - click "More info" then "Run anyway"
 
           **Linux**:
-
-          *Release (AppImage)*:
           1. Download the `.AppImage` file
           2. Make it executable: `chmod +x AnnotationToolkit-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
           3. Run: `./AnnotationToolkit-${{ steps.get_version.outputs.version }}-x86_64.AppImage`
-
-          *Debug (tar.gz)*:
-          1. Download and extract: `tar xzf AnnotationToolkit-${{ steps.get_version.outputs.version }}-Linux-debug.tar.gz`
-          2. Run: `cd AnnotationToolkit-Debug && ./AnnotationToolkit-Debug`
-
-          ### 🐛 Debug Builds
-
-          Debug builds include console output that can help diagnose issues:
-          - Shows error messages and warnings
-          - Displays Qt plugin loading information
-          - Helpful for troubleshooting startup problems
-
-          Use debug builds if you encounter issues with the release version.
 
           ### ⚠️ Security Notes
 
           These executables are **not code-signed**. You may see security warnings from your operating system. This is expected for unsigned applications.
 
-          ### 🔧 Build Improvements
+          ### 📋 What's New
 
-          This release includes significant improvements to the build system:
-          - ✅ Fixed Qt platform plugin issues on Linux and Windows
-          - ✅ Disabled UPX compression for better compatibility
-          - ✅ Linux AppImage format for better portability
-          - ✅ Windows onedir format with all dependencies included
-          - ✅ Both release and debug builds available
+          For detailed release notes and changes in this version, see [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ steps.get_version.outputs.version }}/CHANGELOG.md).
 
           ### 🐍 Python Package
 

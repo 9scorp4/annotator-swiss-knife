@@ -47,38 +47,27 @@ if %ERRORLEVEL% NEQ 0 (
     pip install pyinstaller
 )
 
-:: Build the executable (release version)
-echo Building Windows executable (Release)...
+:: Build the executable
+echo Building Windows executable...
 :: Change to the build directory to run PyInstaller
 cd /d "%SCRIPT_DIR%"
 :: Set dist directory to project root's dist
 SET DIST_DIR=%PROJECT_ROOT%\dist
 pyinstaller "windows_build.spec" --distpath "%DIST_DIR%" --clean --noconfirm
 
-:: Build the debug version
-echo.
-echo Building Windows executable (Debug)...
-pyinstaller "windows_build_debug.spec" --distpath "%DIST_DIR%" --clean --noconfirm
-
 :: Get version from package
 cd /d "%PROJECT_ROOT%"
 for /f "delims=" %%i in ('python -c "from annotation_toolkit import __version__; print(__version__)"') do set VERSION=%%i
 echo Version: %VERSION%
 
-:: Create zip archives for distribution
+:: Create zip archive for distribution
 cd /d "%PROJECT_ROOT%\dist"
 
 echo.
-echo Creating release archive...
+echo Creating archive...
 if exist "AnnotationToolkit" (
-    powershell -Command "Compress-Archive -Path 'AnnotationToolkit' -DestinationPath 'AnnotationToolkit-%VERSION%-Windows-release.zip' -Force"
-    echo Created: AnnotationToolkit-%VERSION%-Windows-release.zip
-)
-
-echo Creating debug archive...
-if exist "AnnotationToolkit-Debug" (
-    powershell -Command "Compress-Archive -Path 'AnnotationToolkit-Debug' -DestinationPath 'AnnotationToolkit-%VERSION%-Windows-debug.zip' -Force"
-    echo Created: AnnotationToolkit-%VERSION%-Windows-debug.zip
+    powershell -Command "Compress-Archive -Path 'AnnotationToolkit' -DestinationPath 'AnnotationToolkit-%VERSION%-Windows.zip' -Force"
+    echo Created: AnnotationToolkit-%VERSION%-Windows.zip
 )
 
 echo.
@@ -86,12 +75,11 @@ echo === Build Complete ===
 echo.
 echo The Windows application has been built successfully!
 echo.
-echo Release build: dist\AnnotationToolkit-%VERSION%-Windows-release.zip
-echo Debug build:   dist\AnnotationToolkit-%VERSION%-Windows-debug.zip
+echo Build location: dist\AnnotationToolkit-%VERSION%-Windows.zip
 echo.
 echo To run the application:
 echo 1. Extract the zip file
-echo 2. Run AnnotationToolkit.exe (or AnnotationToolkit-Debug.exe for debug)
+echo 2. Run AnnotationToolkit.exe
 echo.
 echo Note: If Windows SmartScreen prevents the app from running,
 echo click "More info" and then "Run anyway".
