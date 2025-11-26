@@ -196,16 +196,17 @@ class MainMenuWidget(QWidget):
         # Load and render SVG logo
         logo_path = Path(__file__).parent.parent / "assets" / "logo.svg"
         if logo_path.exists():
-            # Render SVG to pixmap
+            # Render SVG to pixmap with correct aspect ratio
             renderer = QSvgRenderer(str(logo_path))
-            pixmap = QPixmap(QSize(800, 200))
+            # Use SVG's native aspect ratio (280:160 = 1.75:1)
+            pixmap = QPixmap(QSize(700, 400))
             pixmap.fill(Qt.transparent)
             painter = QPainter(pixmap)
             renderer.render(painter)
             painter.end()
 
-            # Scale to fit nicely
-            scaled_pixmap = pixmap.scaled(700, 175, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            # Scale to fit nicely while preserving aspect ratio
+            scaled_pixmap = pixmap.scaled(700, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             logo_label.setPixmap(scaled_pixmap)
 
             # Add subtle static glow
