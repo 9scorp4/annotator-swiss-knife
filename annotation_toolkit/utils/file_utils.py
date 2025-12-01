@@ -36,6 +36,7 @@ from .errors import (
 )
 from .security import FileSizeValidator
 from contextlib import contextmanager
+from .logger import logger
 
 
 @contextmanager
@@ -104,13 +105,13 @@ def atomic_write(file_path: Union[str, Path], mode: str = 'w',
         try:
             if not temp_file.closed:
                 temp_file.close()
-        except:
-            pass
+        except OSError as cleanup_err:
+            logger.debug(f"Failed to close temp file during cleanup: {cleanup_err}")
 
         try:
             Path(temp_path).unlink()
-        except:
-            pass
+        except OSError as cleanup_err:
+            logger.debug(f"Failed to remove temp file during cleanup: {cleanup_err}")
 
         # Re-raise the original exception
         raise
