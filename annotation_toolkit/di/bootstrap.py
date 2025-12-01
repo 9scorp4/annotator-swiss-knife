@@ -15,6 +15,12 @@ from ..core.text.text_cleaner import TextCleaner
 from ..core.text.text_collector import TextCollector
 from ..utils import logger
 from .container import DIContainer, ServiceScope
+from .exceptions import (
+    DIException,
+    ServiceNotRegisteredError,
+    ServiceCreationError,
+    CircularDependencyError,
+)
 from .interfaces import (
     AnnotationToolInterface,
     ConfigInterface,
@@ -290,6 +296,108 @@ def bootstrap_application(config: Optional[Config] = None) -> DIContainer:
     return container
 
 
+class LazyToolRegistry:
+    """
+    Lazy-loading registry for annotation tools.
+
+    Tools are only resolved from the DI container when first accessed,
+    reducing startup time by avoiding unnecessary instantiation.
+    """
+
+    # Mapping of tool classes to their name attribute
+    TOOL_CLASSES = [
+        DictToBulletList,
+        JsonVisualizer,
+        TextCleaner,
+        ConversationGenerator,
+        TextCollector,
+    ]
+
+    # DI exceptions that indicate expected resolution failures
+    _DI_EXCEPTIONS = (ServiceNotRegisteredError, ServiceCreationError, CircularDependencyError)
+
+    def __init__(self, container: DIContainer):
+        """
+        Initialize the lazy tool registry.
+
+        Args:
+            container: The configured DI container
+        """
+        self._container = container
+        self._resolved_tools: dict = {}
+        self._failed_tools: set = set()
+
+    def get_tool(self, tool_class: type):
+        """
+        Get a tool instance by its class type.
+
+        Resolves the tool from the container on first access and caches it.
+
+        Args:
+            tool_class: The tool class to resolve
+
+        Returns:
+            The tool instance, or None if resolution failed
+        """
+        # Return cached tool if already resolved
+        if tool_class in self._resolved_tools:
+            return self._resolved_tools[tool_class]
+
+        # Don't retry previously failed resolutions
+        if tool_class in self._failed_tools:
+            return None
+
+        # Resolve tool lazily
+        try:
+            tool = self._container.resolve(tool_class)
+            self._resolved_tools[tool_class] = tool
+            logger.debug(f"Lazily resolved tool: {tool_class.__name__}")
+            return tool
+        except self._DI_EXCEPTIONS as e:
+            self._failed_tools.add(tool_class)
+            logger.warning(f"Failed to resolve {tool_class.__name__}: {e}")
+            return None
+
+    def get_tool_by_name(self, name: str):
+        """
+        Get a tool instance by its name.
+
+        Args:
+            name: The tool's name attribute
+
+        Returns:
+            The tool instance, or None if not found
+        """
+        for tool_class in self.TOOL_CLASSES:
+            tool = self.get_tool(tool_class)
+            if tool and tool.name == name:
+                return tool
+        return None
+
+    def get_all_tools(self) -> dict:
+        """
+        Get all tool instances (resolves all tools).
+
+        Returns:
+            Dictionary mapping tool names to tool instances
+        """
+        tools = {}
+        for tool_class in self.TOOL_CLASSES:
+            tool = self.get_tool(tool_class)
+            if tool:
+                tools[tool.name] = tool
+        return tools
+
+    def get_available_tool_names(self) -> list:
+        """
+        Get names of all available tools (resolves all tools).
+
+        Returns:
+            List of tool names
+        """
+        return list(self.get_all_tools().keys())
+
+
 def get_tool_instances(container: DIContainer) -> dict:
     """
     Get instances of all annotation tools from the container.
@@ -298,44 +406,17 @@ def get_tool_instances(container: DIContainer) -> dict:
     and returns them in a dictionary format compatible with the existing
     application structure.
 
+    Note: For better performance with lazy loading, consider using
+    LazyToolRegistry directly.
+
     Args:
         container: The configured DI container
 
     Returns:
         Dictionary mapping tool names to tool instances
     """
-    tools = {}
-
-    try:
-        dict_tool = container.resolve(DictToBulletList)
-        tools[dict_tool.name] = dict_tool
-    except Exception as e:
-        logger.warning(f"Failed to resolve DictToBulletList: {e}")
-
-    try:
-        json_tool = container.resolve(JsonVisualizer)
-        tools[json_tool.name] = json_tool
-    except Exception as e:
-        logger.warning(f"Failed to resolve JsonVisualizer: {e}")
-
-    try:
-        text_tool = container.resolve(TextCleaner)
-        tools[text_tool.name] = text_tool
-    except Exception as e:
-        logger.warning(f"Failed to resolve TextCleaner: {e}")
-
-    try:
-        conv_gen_tool = container.resolve(ConversationGenerator)
-        tools[conv_gen_tool.name] = conv_gen_tool
-    except Exception as e:
-        logger.warning(f"Failed to resolve ConversationGenerator: {e}")
-
-    try:
-        text_collector_tool = container.resolve(TextCollector)
-        tools[text_collector_tool.name] = text_collector_tool
-    except Exception as e:
-        logger.warning(f"Failed to resolve TextCollector: {e}")
-
+    registry = LazyToolRegistry(container)
+    tools = registry.get_all_tools()
     logger.info(f"Retrieved {len(tools)} tool instances from DI container")
     return tools
 
@@ -373,7 +454,8 @@ def validate_container_configuration(container: DIContainer) -> bool:
             if instance is None:
                 logger.error(f"Service resolved to None: {service.__name__}")
                 return False
-        except Exception as e:
+        except DIException as e:
+            # Catch all DI-related exceptions (registration, creation, circular deps)
             logger.error(f"Failed to resolve service {service.__name__}: {e}")
             return False
 
