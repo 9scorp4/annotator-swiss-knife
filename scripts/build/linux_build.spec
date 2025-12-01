@@ -120,7 +120,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='annotation_toolkit/ui/gui/assets/icon_256.png',
+    icon=os.path.join(project_root, 'annotation_toolkit/ui/gui/assets/icon_256.png'),
 )
 
 coll = COLLECT(
