@@ -33,6 +33,8 @@ from .accessibility import (
     set_tab_accessible,
 )
 
+from .fonts import FontManager
+
 __all__ = [
     # Animations
     'AnimationManager',
@@ -59,4 +61,6 @@ __all__ = [
     'set_checkbox_accessible',
     'set_list_accessible',
     'set_tab_accessible',
+    # Fonts
+    'FontManager',
 ]

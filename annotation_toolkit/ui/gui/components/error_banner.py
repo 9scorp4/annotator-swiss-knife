@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
 from PyQt5.QtGui import QFont
 from ..utils.animations import animate_opacity
+from ..utils.fonts import FontManager
 
 
 class ErrorBanner(QFrame):
@@ -68,7 +69,7 @@ class ErrorBanner(QFrame):
 
         # Icon
         icon_label = QLabel(self._get_icon())
-        icon_label.setFont(QFont("Arial", 16))
+        icon_label.setFont(FontManager.get_font(size=FontManager.SIZE_XL))
         icon_label.setStyleSheet(f"color: {color['border']};")
         layout.addWidget(icon_label)
 

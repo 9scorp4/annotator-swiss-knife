@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
 
 from .theme import ColorPalette, BorderRadius, Spacing
 from .themes import ThemeManager
+from .utils.fonts import FontManager
 
 
 class SidebarButton(QPushButton):
@@ -39,14 +40,14 @@ class SidebarButton(QPushButton):
 
         # Icon label
         self.icon_label = QLabel(icon_text)
-        self.icon_label.setFont(QFont("Arial", 16))
+        self.icon_label.setFont(FontManager.get_font(size=FontManager.SIZE_XL))
         self.icon_label.setFixedSize(24, 24)
         self.icon_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.icon_label)
 
         # Text label
         self.text_label = QLabel(tool_name)
-        self.text_label.setFont(QFont("Arial", 13))
+        self.text_label.setFont(FontManager.get_font(size=FontManager.SIZE_MD))
         layout.addWidget(self.text_label)
         layout.addStretch()
 
@@ -195,7 +196,7 @@ class CollapsibleSidebar(QFrame):
 
         # Toggle button at top
         self.toggle_btn = QPushButton("☰")
-        self.toggle_btn.setFont(QFont("Arial", 18))
+        self.toggle_btn.setFont(FontManager.get_font(size=FontManager.SIZE_XXL))
         self.toggle_btn.setFixedHeight(44)
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
         # Styling will be applied by _apply_theme()

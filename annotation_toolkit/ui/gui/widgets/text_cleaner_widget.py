@@ -41,6 +41,7 @@ from ..theme import (
     get_warning_button_style,
 )
 from ..themes import ThemeManager
+from ..utils.fonts import FontManager
 
 
 class TextCleanerWidget(QWidget):
@@ -103,11 +104,11 @@ class TextCleanerWidget(QWidget):
         input_layout.setSpacing(10)
 
         input_label = QLabel("Input Text (with markdown/JSON/code artifacts):")
-        input_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        input_label.setFont(FontManager.get_font(size=FontManager.SIZE_BASE, bold=True))
         input_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
 
         self.input_text = PlainTextEdit()
-        self.input_text.setFont(QFont("Courier New", 12))
+        self.input_text.setFont(FontManager.get_code_font())
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.input_text.setPlaceholderText(
             "Enter text here. You can use markdown, JSON, and code artifacts.\n\nExample:\n\n`This is a sample text\n\nwith artifacts.\n*This text is in bold.*\n\nThis is a newline:\n\nThis is a code block:\n```\nimport pandas as pd\nimport numpy as np```"
@@ -219,11 +220,11 @@ class TextCleanerWidget(QWidget):
 
         # Cleaned text section with better styling
         cleaned_label = QLabel("Cleaned Text (editable):")
-        cleaned_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        cleaned_label.setFont(FontManager.get_font(size=FontManager.SIZE_BASE, bold=True))
         cleaned_label.setObjectName("sectionTitle")  # Let app-wide theme handle color
 
         self.cleaned_text_edit = PlainTextEdit()
-        self.cleaned_text_edit.setFont(QFont("Arial", 12))
+        self.cleaned_text_edit.setFont(FontManager.get_font())
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.cleaned_text_edit.setPlaceholderText(
             "Cleaned text will appear here. You can edit it before transforming back."
@@ -256,14 +257,14 @@ class TextCleanerWidget(QWidget):
 
         # Transformed output section with better styling
         transformed_label = QLabel("Transformed Output:")
-        transformed_label.setFont(QFont("Poppins", 12, QFont.Bold))
+        transformed_label.setFont(FontManager.get_font(size=FontManager.SIZE_BASE, bold=True))
         transformed_label.setObjectName(
             "sectionTitle"
         )  # Let app-wide theme handle color
 
         self.transformed_text = PlainTextEdit()
         self.transformed_text.setReadOnly(True)
-        self.transformed_text.setFont(QFont("Courier New", 12))
+        self.transformed_text.setFont(FontManager.get_code_font())
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.transformed_text.setPlaceholderText("Transformed text will appear here")
 

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from PyQt5.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QFontDatabase, QIcon, QPalette
+from PyQt5.QtGui import QColor, QFont, QIcon, QPalette
 from PyQt5.QtWidgets import (
     QApplication,
     QFrame,
@@ -48,6 +48,7 @@ from .widgets.text_cleaner_widget import TextCleanerWidget
 from .widgets.text_collector_widget import TextCollectorWidget
 from .sidebar import CollapsibleSidebar
 from .themes import ThemeManager, StylesheetGenerator
+from .utils.fonts import FontManager
 from .utils.shortcuts import ShortcutManager, ShortcutHelpDialog
 from .utils.auto_save import AutoSaveManager
 from .utils.session_manager import SessionManager
@@ -73,14 +74,12 @@ class AnnotationToolkitApp(QMainWindow):
         super().__init__()
         logger.info("Initializing Annotation Swiss Knife GUI application")
 
-        # Load fonts early to prevent loading delays and set application font
-        self._load_fonts()
+        # Initialize FontManager and set application font
+        FontManager.initialize()
+        FontManager.set_application_font()
 
-        # Set the application font globally to prevent Qt from looking for other fonts
-        app_font = QFont(getattr(self, "selected_font_family", "Arial"), 12)
-        app_font.setLetterSpacing(QFont.PercentageSpacing, 100)  # Ensure normal letter spacing
-        app_font.setWordSpacing(0)  # Ensure normal word spacing
-        QApplication.instance().setFont(app_font)
+        # Keep selected_font_family for backwards compatibility
+        self.selected_font_family = FontManager.get_font_family()
 
         # Initialize configuration only once
         if config is not None:
@@ -397,47 +396,14 @@ class AnnotationToolkitApp(QMainWindow):
     def _load_fonts(self) -> None:
         """
         Load custom fonts for the application.
+
+        Note: This method is deprecated. Font loading is now handled by
+        FontManager.initialize() which is called in __init__.
         """
-        # Use system fonts to avoid the 157ms font loading delay
-        # Preference order: system-specific fonts that are commonly available
-        try:
-            font_db = QFontDatabase()
-            available_fonts = font_db.families()
-
-            # Define font preference order based on platform
-            import platform
-
-            system = platform.system()
-
-            if system == "Darwin":  # macOS
-                preferred_fonts = [
-                    "SF Pro Display",
-                    "Helvetica Neue",
-                    ".AppleSystemUIFont",
-                    "Arial",
-                ]
-            elif system == "Windows":
-                preferred_fonts = ["Segoe UI", "Calibri", "Arial"]
-            else:  # Linux and others
-                preferred_fonts = ["Ubuntu", "Roboto", "DejaVu Sans", "Arial"]
-
-            # Find the first available preferred font
-            self.selected_font_family = None
-            for font in preferred_fonts:
-                if font in available_fonts or font.startswith(
-                    "-"
-                ):  # -apple-system is special
-                    self.selected_font_family = font
-                    logger.debug(f"Using font family: {font}")
-                    break
-
-            if not self.selected_font_family:
-                self.selected_font_family = "Arial"  # Fallback to Arial
-                logger.debug("Using fallback font: Arial")
-
-        except Exception as e:
-            logger.warning(f"Error loading custom fonts: {str(e)}")
-            self.selected_font_family = "Arial"
+        # Delegate to FontManager for backwards compatibility
+        if not FontManager.is_initialized():
+            FontManager.initialize()
+        self.selected_font_family = FontManager.get_font_family()
 
     def _on_sidebar_tool_selected(self, tool_name: str):
         """

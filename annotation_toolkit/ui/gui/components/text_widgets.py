@@ -9,6 +9,8 @@ from PyQt5.QtCore import pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QColor, QFont, QPalette, QKeySequence
 from PyQt5.QtWidgets import QApplication, QLineEdit, QTextEdit
 
+from ..utils.fonts import FontManager
+
 
 class PlainLineEdit(QLineEdit):
     """
@@ -24,7 +26,7 @@ class PlainLineEdit(QLineEdit):
         super().__init__(*args, **kwargs)
 
         # Set a modern monospace font for better text display
-        self.setFont(QFont("SF Mono", 11) if self._is_mac() else QFont("Consolas", 11))
+        self.setFont(FontManager.get_code_font(size=FontManager.SIZE_SM))
 
         # Set minimum height for better visual presence
         self.setMinimumHeight(35)
@@ -94,7 +96,7 @@ class PlainTextEdit(QTextEdit):
         super().__init__(*args, **kwargs)
 
         # Set a modern monospace font for better code display
-        self.setFont(QFont("SF Mono", 12) if self._is_mac() else QFont("Consolas", 12))
+        self.setFont(FontManager.get_code_font())
 
         # Set to plain text mode
         self.setAcceptRichText(False)

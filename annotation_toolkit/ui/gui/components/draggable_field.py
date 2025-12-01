@@ -10,6 +10,8 @@ from PyQt5.QtCore import Qt, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QDrag
 from PyQt5.QtWidgets import QFrame, QLabel
 
+from ..utils.fonts import FontManager
+
 
 class DraggableFieldFrame(QFrame):
     """
@@ -35,7 +37,7 @@ class DraggableFieldFrame(QFrame):
 
         # Add drag handle indicator (visual cue)
         self.drag_indicator = QLabel("⋮⋮")
-        self.drag_indicator.setFont(QFont("Arial", 14, QFont.Bold))
+        self.drag_indicator.setFont(FontManager.get_font(size=FontManager.SIZE_LG, bold=True))
         self.drag_indicator.setFixedSize(20, 38)
         self.drag_indicator.setAlignment(Qt.AlignCenter)
         self.drag_indicator.setCursor(Qt.OpenHandCursor)

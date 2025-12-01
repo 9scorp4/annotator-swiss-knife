@@ -41,6 +41,7 @@ from ..theme import (
     get_primary_button_style,
 )
 from ..themes import ThemeManager, StylesheetGenerator
+from ..utils.fonts import FontManager
 
 
 class DictToBulletWidget(QWidget):
@@ -106,12 +107,12 @@ class DictToBulletWidget(QWidget):
         input_layout.setSpacing(12)
 
         self.input_label = QLabel("Input Dictionary (JSON format):")
-        self.input_label.setFont(QFont("Arial", 15, QFont.Bold))
+        self.input_label.setFont(FontManager.get_font(size=FontManager.SIZE_LG, bold=True))
         self.input_label.setObjectName("sectionLabel")
         # Styling will be applied by _apply_theme()
 
         self.input_text = PlainTextEdit()
-        self.input_text.setFont(QFont("Courier New", 12))
+        self.input_text.setFont(FontManager.get_code_font())
         self.input_text.setPlaceholderText(
             'Paste your dictionary here in JSON format, e.g.:\n{\n    "1": "https://www.example.com/page1",\n    "2": "https://www.example.com/page2"\n}'
         )
@@ -173,13 +174,13 @@ class DictToBulletWidget(QWidget):
 
         # Clickable list section with modern styling
         self.clickable_label = QLabel("Clickable Links (double-click to open):")
-        self.clickable_label.setFont(QFont("Arial", 15, QFont.Bold))
+        self.clickable_label.setFont(FontManager.get_font(size=FontManager.SIZE_LG, bold=True))
         self.clickable_label.setObjectName("sectionLabel")
         # Styling will be applied by _apply_theme()
 
         # Use QListWidget for clickable items with better styling - theme-aware
         self.link_list = QListWidget()
-        self.link_list.setFont(QFont("Arial", 11))
+        self.link_list.setFont(FontManager.get_font(size=FontManager.SIZE_SM))
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
         self.link_list.setCursor(Qt.PointingHandCursor)
         self.link_list.itemDoubleClicked.connect(self._open_url)
@@ -201,13 +202,13 @@ class DictToBulletWidget(QWidget):
         markdown_content_layout.setSpacing(8)
 
         self.markdown_label = QLabel("Markdown Output:")
-        self.markdown_label.setFont(QFont("Arial", 13, QFont.Bold))
+        self.markdown_label.setFont(FontManager.get_font(size=FontManager.SIZE_MD, bold=True))
         self.markdown_label.setObjectName("subsectionLabel")
         # Styling will be applied by _apply_theme()
 
         self.output_text = PlainTextEdit()
         self.output_text.setReadOnly(True)
-        self.output_text.setFont(QFont("Courier New", 12))
+        self.output_text.setFont(FontManager.get_code_font())
         # We'll let the app-wide theme handle the styling for better dark mode compatibility
 
         markdown_content_layout.addWidget(self.markdown_label)

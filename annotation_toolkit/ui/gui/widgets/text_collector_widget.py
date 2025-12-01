@@ -32,6 +32,7 @@ from ..components.text_widgets import PlainTextEdit
 from ..components.draggable_field import DraggableFieldFrame
 from ..themes import ThemeManager, StylesheetGenerator
 from ..components import GlassButton
+from ..utils.fonts import FontManager
 
 
 class TextCollectorWidget(QWidget):
@@ -96,7 +97,7 @@ class TextCollectorWidget(QWidget):
 
         # Field counter with better typography
         self.field_counter_label = QLabel(f"Fields: 0/{self.tool.max_fields}")
-        self.field_counter_label.setFont(QFont("Arial", 13, QFont.Bold))
+        self.field_counter_label.setFont(FontManager.get_font(size=FontManager.SIZE_MD, bold=True))
         controls_layout.addWidget(self.field_counter_label)
 
         controls_layout.addStretch(1)
@@ -184,7 +185,7 @@ class TextCollectorWidget(QWidget):
 
         # Header with better styling
         header_label = QLabel("Text Fields")
-        header_label.setFont(QFont("Arial", 15, QFont.Bold))
+        header_label.setFont(FontManager.get_font(size=FontManager.SIZE_LG, bold=True))
         self.input_header_label = header_label  # Store reference for theme application
         input_layout.addWidget(header_label)
 
@@ -231,14 +232,14 @@ class TextCollectorWidget(QWidget):
 
         # Header with better styling
         header_label = QLabel("Generated JSON:")
-        header_label.setFont(QFont("Arial", 15, QFont.Bold))
+        header_label.setFont(FontManager.get_font(size=FontManager.SIZE_LG, bold=True))
         # Styling applied in _apply_static_theme()
         output_layout.addWidget(header_label)
 
         # JSON display with modern styling
         self.json_display = PlainTextEdit()
         self.json_display.setReadOnly(True)
-        self.json_display.setFont(QFont("Courier New", 12))
+        self.json_display.setFont(FontManager.get_code_font())
         self.json_display.setPlaceholderText(
             "Add text to fields and click 'Generate JSON' to see output here..."
         )
@@ -290,21 +291,21 @@ class TextCollectorWidget(QWidget):
         # Field number label
         field_num = len(self.text_fields) + 1
         num_label = QLabel(f"{field_num}")
-        num_label.setFont(QFont("Arial", 13, QFont.Bold))
+        num_label.setFont(FontManager.get_font(size=FontManager.SIZE_MD, bold=True))
         num_label.setFixedSize(38, 38)
         num_label.setAlignment(Qt.AlignCenter)
         field_layout.addWidget(num_label)
 
         # Text input
         text_input = PlainTextEdit()
-        text_input.setFont(QFont("Arial", 12))
+        text_input.setFont(FontManager.get_font())
         text_input.setPlaceholderText(f"Enter text for field {field_num}...")
         text_input.setFixedHeight(70)
         field_layout.addWidget(text_input)
 
         # Remove button
         remove_btn = QPushButton("×")
-        remove_btn.setFont(QFont("Arial", 18, QFont.Bold))
+        remove_btn.setFont(FontManager.get_font(size=FontManager.SIZE_XXL, bold=True))
         remove_btn.setFixedSize(36, 36)
         remove_btn.setCursor(Qt.PointingHandCursor)
         remove_btn.clicked.connect(lambda: self._remove_field(field_frame))

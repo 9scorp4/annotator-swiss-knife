@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QFont, QColor, QCursor
 
 from ..themes import ThemeManager
+from ..utils.fonts import FontManager
 
 
 class JsonTreeView(QTreeWidget):
@@ -101,7 +102,7 @@ class JsonTreeView(QTreeWidget):
         self.setSelectionMode(QTreeWidget.SingleSelection)
 
         # Set font
-        self.setFont(QFont("SF Mono, Consolas, monospace", 10))
+        self.setFont(FontManager.get_code_font(size=10))
 
     def load_json(self, data: Union[Dict, List, str]) -> None:
         """
