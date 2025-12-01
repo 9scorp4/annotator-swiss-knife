@@ -102,7 +102,35 @@ All services are managed through a DI container:
 **GUI** (`annotation_toolkit/ui/gui/`):
 - **app.py**: Main application window, tool initialization
 - **widgets/**: Individual tool widgets (dict_widget.py, json_widget.py, etc.)
+- **utils/fonts.py**: FontManager for centralized typography management
 - **Platform-aware**: Different fonts and themes for macOS/Windows/Linux
+
+#### Font Management
+
+**Location**: `annotation_toolkit/ui/gui/utils/fonts.py`
+
+**Responsibilities**:
+- Centralized font selection across all UI components
+- Platform-specific font fallback chains (SF Pro on macOS, Segoe UI on Windows, Ubuntu/Roboto on Linux)
+- Consistent typography with predefined size constants
+- Automatic font detection and initialization
+
+**Font Size Constants**:
+- `SIZE_XS` (9pt), `SIZE_SM` (11pt), `SIZE_BASE` (12pt)
+- `SIZE_MD` (13pt), `SIZE_LG` (14pt), `SIZE_XL` (16pt)
+- `SIZE_XXL` (18pt), `SIZE_ICON` (36pt)
+
+**Usage**:
+```python
+from annotation_toolkit.ui.gui.utils.fonts import FontManager
+
+# Initialize once at app startup
+FontManager.initialize()
+
+# Use throughout the app
+label.setFont(FontManager.get_font(size=FontManager.SIZE_LG, bold=True))
+code_edit.setFont(FontManager.get_code_font())
+```
 
 **CLI** (`annotation_toolkit/ui/cli/`):
 - **cli.py**: Argument parser and command router
@@ -165,6 +193,44 @@ container = bootstrap_application(config)
 
 # Resolve services
 tool = container.resolve(DictToBulletList)
+```
+
+#### Lazy Tool Resolution
+
+**Location**: `annotation_toolkit/di/bootstrap.py`
+
+The LazyToolRegistry provides deferred tool resolution, improving application startup time by only instantiating tools when they're first accessed.
+
+**Benefits**:
+- Faster application startup
+- Lower initial memory footprint
+- Pay-for-what-you-use model
+- Singleton caching after first resolution
+
+**Implementation**:
+```python
+class LazyToolRegistry:
+    """Registry for lazily resolving tools from DI container."""
+
+    def __init__(self, container: DIContainer):
+        self._container = container
+        self._tool_cache = {}
+
+    def get_tool(self, tool_class: type) -> Any:
+        if tool_class not in self._tool_cache:
+            self._tool_cache[tool_class] = self._container.resolve(tool_class)
+        return self._tool_cache[tool_class]
+```
+
+**Usage**:
+```python
+# In application bootstrap
+registry = LazyToolRegistry(container)
+
+# Tools only created when first accessed
+dict_tool = registry.get_tool(DictToBulletList)  # Created here
+json_tool = registry.get_tool(JsonVisualizer)    # Created here
+dict_tool_again = registry.get_tool(DictToBulletList)  # Retrieved from cache
 ```
 
 ### Configuration System
@@ -545,9 +611,19 @@ def call_external_service():
 
 ### Caching Strategy
 
-- LRU cache with configurable TTL
+- LRU cache with configurable TTL and automatic cleanup
 - Disabled by default
 - Enable via `performance.enable_caching: true`
+- **New in v0.6.0**: TTLCache automatically cleans up expired entries every 60 seconds
+- Prevents memory bloat in long-running processes
+- Cleanup triggered on cache access (amortized cost)
+
+### Profiling Optimizations
+
+- **New in v0.6.0**: O(1) bounded statistics storage using `deque`
+- Efficient memory usage for performance metrics
+- Pre-compiled regex patterns for faster validation
+- Lazy configuration loading in security module
 
 ### Streaming Threshold
 

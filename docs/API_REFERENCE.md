@@ -7,10 +7,11 @@ This document provides a comprehensive API reference for all tools, utilities, a
 ## Table of Contents
 
 1. [Core Tools](#core-tools)
-2. [Infrastructure Utilities](#infrastructure-utilities)
-3. [Configuration](#configuration)
-4. [Dependency Injection](#dependency-injection)
-5. [Error Handling](#error-handling)
+2. [UI Utilities](#ui-utilities-new-in-v060) (New in v0.6.0)
+3. [Infrastructure Utilities](#infrastructure-utilities)
+4. [Configuration](#configuration)
+5. [Dependency Injection](#dependency-injection)
+6. [Error Handling](#error-handling)
 
 ---
 
@@ -147,6 +148,54 @@ print(f"Turn count: {gen.get_turn_count()}")
 
 ---
 
+## UI Utilities (New in v0.6.0)
+
+### FontManager
+
+**Location**: `annotation_toolkit.ui.gui.utils.fonts`
+
+Centralized font management for consistent UI typography across platforms.
+
+```python
+from annotation_toolkit.ui.gui.utils.fonts import FontManager
+```
+
+**Methods**:
+- `initialize() -> None`: Initialize font system (call once at app startup)
+- `get_font(size: int = SIZE_BASE, bold: bool = False, italic: bool = False) -> QFont`: Get UI font
+- `get_code_font(size: int = SIZE_BASE) -> QFont`: Get monospace font for code
+
+**Font Size Constants**:
+- `SIZE_XS = 9`: Extra small
+- `SIZE_SM = 11`: Small
+- `SIZE_BASE = 12`: Base size
+- `SIZE_MD = 13`: Medium
+- `SIZE_LG = 14`: Large
+- `SIZE_XL = 16`: Extra large
+- `SIZE_XXL = 18`: Extra extra large
+- `SIZE_ICON = 36`: Icon size
+
+**Platform Fonts**:
+- macOS: SF Pro Display, SF Pro Text, SF Mono
+- Windows: Segoe UI, Cascadia Code
+- Linux: Ubuntu, Roboto, Fira Code
+
+**Example**:
+```python
+FontManager.initialize()
+
+# Get regular font
+label.setFont(FontManager.get_font(size=FontManager.SIZE_LG))
+
+# Get bold font
+header.setFont(FontManager.get_font(size=FontManager.SIZE_XXL, bold=True))
+
+# Get code font
+editor.setFont(FontManager.get_code_font())
+```
+
+---
+
 ## Infrastructure Utilities
 
 ### Performance Profiling
@@ -156,6 +205,8 @@ print(f"Turn count: {gen.get_turn_count()}")
 #### PerformanceProfiler
 
 **Description**: Thread-safe performance profiling with statistics.
+
+**New in v0.6.0**: Uses `deque` for O(1) bounded statistics storage for efficient memory usage.
 
 **Methods**:
 - `profile(name: str) -> ContextManager`: Context manager for profiling
@@ -177,6 +228,60 @@ print(f"Turn count: {gen.get_turn_count()}")
 - `@profile_performance(name: str)`: Auto-profile function
 - `@profile_memory(name: str)`: Auto-profile memory
 - `@comprehensive_profile(name: str)`: Profile time + memory
+
+---
+
+### Caching (New in v0.6.0)
+
+**Location**: `annotation_toolkit.core.conversation.visualizer`
+
+#### TTLCache
+
+**Description**: LRU cache with time-to-live (TTL) and automatic cleanup to prevent memory bloat.
+
+**Constructor**:
+```python
+TTLCache(max_size: int = 128, ttl_seconds: float = 300, cleanup_interval: int = 60)
+```
+
+**Parameters**:
+- `max_size`: Maximum number of items in cache
+- `ttl_seconds`: Time-to-live for cached items (default: 5 minutes)
+- `cleanup_interval`: Seconds between automatic cleanups (default: 60 seconds)
+
+**Methods**:
+- `get(key: Any) -> Any`: Get value from cache (triggers cleanup check)
+- `put(key: Any, value: Any) -> None`: Store value in cache
+- `clear() -> None`: Clear all cached items
+- `size() -> int`: Get current cache size
+
+**Cleanup Behavior**:
+- Automatic cleanup triggered on cache access
+- Only runs if `cleanup_interval` seconds elapsed since last cleanup
+- Removes all expired entries based on TTL
+- O(n) worst case, amortized over time
+- Prevents unbounded memory growth
+
+**Example**:
+```python
+from annotation_toolkit.core.conversation.visualizer import TTLCache
+
+# Create cache with auto-cleanup
+cache = TTLCache(
+    max_size=128,
+    ttl_seconds=300,        # 5 minutes
+    cleanup_interval=60     # Cleanup every 60 seconds
+)
+
+# Use cache
+cache.put("key", "value")
+result = cache.get("key")  # Also triggers cleanup check
+```
+
+**Performance**:
+- **New in v0.6.0**: Automatic cleanup prevents memory bloat in long-running processes
+- Slight overhead on cache access (timestamp check)
+- Cleanup cost amortized across many operations
 
 ---
 
@@ -475,6 +580,32 @@ from annotation_toolkit.di.bootstrap import bootstrap_application, get_tool_inst
 
 container = bootstrap_application(config)
 tools = get_tool_instances(container)
+```
+
+### LazyToolRegistry (New in v0.6.0)
+
+**Location**: `annotation_toolkit.di.bootstrap`
+
+Registry for lazy tool resolution with caching.
+
+```python
+from annotation_toolkit.di.bootstrap import LazyToolRegistry
+
+registry = LazyToolRegistry(container)
+```
+
+**Constructor**:
+- `LazyToolRegistry(container: DIContainer)`: Create registry with DI container
+
+**Methods**:
+- `get_tool(tool_class: Type) -> Any`: Get tool instance (creates on first access, caches for subsequent calls)
+
+**Example**:
+```python
+# Tools are created on-demand and cached
+dict_tool = registry.get_tool(DictToBulletList)  # Created
+json_tool = registry.get_tool(JsonVisualizer)    # Created
+dict_tool2 = registry.get_tool(DictToBulletList) # From cache
 ```
 
 ---

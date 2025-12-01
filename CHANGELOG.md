@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-12-01
+
+### Added
+- LazyToolRegistry for deferred tool resolution with on-demand loading
+- FontManager for centralized UI typography with platform-specific font selection
+- TTLCache automatic cleanup to prevent memory bloat in long-running processes
+- Comprehensive tests for code quality improvements
+
+### Changed
+- Integrated v2 Swiss knife logo and icon across all platforms
+- Updated logo aspect ratio in main menu widget for better visual balance
+
+### Performance
+- Lazy configuration loading with pre-compiled regex patterns in security module
+- O(1) bounded statistics storage using deque in profiling module
+- TTLCache now automatically cleans up expired entries every 60 seconds
+
+### Fixed
+- Replaced bare except clauses with specific OSError handling in file_utils
+
+### Infrastructure
+- Removed debug builds from all platforms for cleaner release artifacts
+
 ## [0.5.3] - 2025-11-25
 
 ### Added
@@ -177,7 +200,9 @@ When creating a release:
 3. Update the version links at the bottom
 
 ### Version Links
-[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.5.2-beta.3...HEAD
+[Unreleased]: https://github.com/9scorp4/annotator-swiss-knife/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.6.0
+[0.5.3]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.3
 [0.5.2-beta.3]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.3
 [0.5.2-beta.2]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.2
 [0.5.2-beta.1]: https://github.com/9scorp4/annotator-swiss-knife/releases/tag/v0.5.2-beta.1

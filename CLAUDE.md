@@ -246,6 +246,24 @@ tool = container.resolve(DictToBulletList)
 
 The GUI application (`ui/gui/app.py`) initializes tools in `_initialize_tools()` with fallback to manual initialization if DI fails.
 
+**Lazy Tool Resolution** (New in v0.6.0):
+
+For improved startup performance, use the `LazyToolRegistry` to defer tool instantiation until first access:
+
+```python
+from annotation_toolkit.di.bootstrap import LazyToolRegistry
+
+# Create registry with DI container
+registry = LazyToolRegistry(container)
+
+# Tools only created when first accessed
+dict_tool = registry.get_tool(DictToBulletList)  # Created here
+json_tool = registry.get_tool(JsonVisualizer)    # Created here
+dict_tool_again = registry.get_tool(DictToBulletList)  # Retrieved from cache
+```
+
+**Benefits**: Faster startup, lower memory usage, pay-for-what-you-use model.
+
 ### Configuration Override Pattern
 
 Configuration can be layered:
@@ -307,6 +325,10 @@ The project supports Windows, macOS, and Linux:
 - Scripts provided in `.sh`, `.ps1`, and `.bat` formats
 - Path handling uses `Path` from `pathlib` for cross-platform compatibility
 - GUI fonts are platform-aware (SF Pro on macOS, Segoe UI on Windows, Ubuntu/Roboto on Linux)
+- **FontManager** (New in v0.6.0): Centralized font management for consistent UI typography
+  - Platform-specific font selection with fallback chains
+  - Predefined font sizes: SIZE_XS (9pt) through SIZE_ICON (36pt)
+  - Usage: `FontManager.initialize()` at startup, then `FontManager.get_font(size=FontManager.SIZE_LG)`
 - Theme detection supports both light and dark system preferences
 
 ## Testing Architecture
@@ -331,6 +353,7 @@ Monitor and optimize application performance with detailed statistics.
 
 **Key Classes**:
 - `PerformanceProfiler`: Thread-safe profiling with statistics (avg, min, max, percentiles)
+  - **New in v0.6.0**: O(1) bounded statistics storage using `deque` for efficient memory usage
 - `MemoryProfiler`: Memory usage tracking (requires psutil)
 - `CPUProfiler`: CPU profiling with cProfile integration
 - `RegressionDetector`: Detect performance degradations
@@ -615,5 +638,6 @@ Security settings in `config.py` include:
 
 Performance settings control:
 - Caching (LRU cache with TTL)
+  - **New in v0.6.0**: TTLCache with automatic cleanup every 60 seconds to prevent memory bloat
 - Streaming for large files
 - Retry logic with exponential backoff

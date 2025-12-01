@@ -120,6 +120,49 @@ tool = resolve(DictToBulletList)
 tool = container.resolve(DictToBulletList)
 ```
 
+### Lazy Tool Resolution (New in v0.6.0)
+
+The LazyToolRegistry provides deferred service resolution, improving application startup time by only instantiating tools when they're first accessed.
+
+```python
+from annotation_toolkit.di.bootstrap import LazyToolRegistry
+
+# Create registry with DI container
+registry = LazyToolRegistry(container)
+
+# Tools only created when first accessed
+dict_tool = registry.get_tool(DictToBulletList)  # Tool created here
+json_tool = registry.get_tool(JsonVisualizer)    # Tool created here
+dict_tool_again = registry.get_tool(DictToBulletList)  # Retrieved from cache
+```
+
+**Benefits**:
+- **Faster Startup**: Tools are created on-demand, not at application initialization
+- **Lower Memory**: Only loaded tools consume memory
+- **Pay-for-what-you-use**: Users only pay the cost of tools they actually use
+- **Singleton Caching**: Tools are cached after first resolution
+
+**Implementation Details**:
+```python
+class LazyToolRegistry:
+    """Registry for lazily resolving tools from DI container."""
+
+    def __init__(self, container: DIContainer):
+        self._container = container
+        self._tool_cache = {}
+
+    def get_tool(self, tool_class: type) -> Any:
+        """Get tool from cache or create it on first access."""
+        if tool_class not in self._tool_cache:
+            self._tool_cache[tool_class] = self._container.resolve(tool_class)
+        return self._tool_cache[tool_class]
+```
+
+**Use Cases**:
+- GUI applications with multiple tool widgets (only load visible tools)
+- CLI commands that need fast startup time
+- Applications with many registered services but selective usage
+
 ## Benefits Achieved
 
 ### 1. **Improved Testability**
@@ -181,8 +224,10 @@ The DI system is designed to support future enhancements:
 1. **Request Scoping**: Support for request-scoped services in web scenarios
 2. **Configuration Validation**: JSON Schema validation for service configurations
 3. **Service Discovery**: Automatic service discovery and registration
-4. **Performance Optimizations**: Caching and optimization for high-frequency resolution
-5. **Plugin System**: Full plugin architecture built on top of DI
+4. **Plugin System**: Full plugin architecture built on top of DI
+
+**Implemented in v0.6.0**:
+- ~~Performance Optimizations~~: **LazyToolRegistry** now provides lazy loading and caching for high-performance resolution
 
 ## Migration Guide
 

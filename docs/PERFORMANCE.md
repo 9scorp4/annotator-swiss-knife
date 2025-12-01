@@ -337,7 +337,9 @@ for chunk in parser.read_in_chunks("huge_file.json", chunk_size=1024*1024):
 
 ## Caching Strategies
 
-### LRU Cache with TTL
+### LRU Cache with TTL and Auto-Cleanup
+
+**New in v0.6.0**: TTLCache now includes automatic cleanup to prevent memory bloat in long-running processes.
 
 ```yaml
 performance:
@@ -345,6 +347,35 @@ performance:
   cache_ttl_seconds: 300
   max_cache_size: 1000
 ```
+
+**Usage**:
+```python
+from annotation_toolkit.core.conversation.visualizer import TTLCache
+
+# Create cache with auto-cleanup
+cache = TTLCache(
+    max_size=128,              # Maximum items
+    ttl_seconds=300,           # 5 minute TTL
+    cleanup_interval=60        # Cleanup every 60 seconds
+)
+
+# Cache automatically removes expired entries
+cache.put(key, value)
+result = cache.get(key)  # Triggers cleanup check if interval elapsed
+```
+
+**Cleanup Behavior**:
+- Automatic cleanup triggered on cache access
+- Only runs if `cleanup_interval` seconds have passed since last cleanup
+- Removes all expired entries based on TTL
+- O(n) worst case, but amortized over time
+- Prevents unbounded memory growth in long-running processes
+
+**Performance Impact**:
+- Slight overhead on cache access (timestamp check)
+- Cleanup cost amortized across many operations
+- Memory stays bounded even with long-running processes
+- **New in v0.6.0**: O(1) bounded statistics storage using `deque` for profiling metrics
 
 **What's cached**:
 - Configuration values
