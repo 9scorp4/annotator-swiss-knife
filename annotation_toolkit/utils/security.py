@@ -14,21 +14,60 @@ import time
 from collections import defaultdict
 from threading import Lock
 
+from functools import lru_cache
+
 from .errors import ValidationError, ValueValidationError
 from .logger import get_logger
-from ..config import Config
 
 logger = get_logger()
 
-# Load security configuration from config
-_config = Config()
 
-# Security configuration with fallbacks
-MAX_FILE_SIZE = _config.get_security_config('max_file_size') or (100 * 1024 * 1024)
-MAX_PATH_LENGTH = _config.get_security_config('max_path_length') or 4096
-ALLOWED_EXTENSIONS = set(_config.get_security_config('allowed_extensions') or ['.json', '.yaml', '.yml', '.txt', '.md', '.csv'])
-RATE_LIMIT_WINDOW = _config.get_security_config('rate_limit', 'window_seconds') or 60
-RATE_LIMIT_MAX_REQUESTS = _config.get_security_config('rate_limit', 'max_requests') or 100
+@lru_cache(maxsize=1)
+def _get_security_config():
+    """
+    Lazy-load security configuration.
+
+    This defers Config instantiation until first access, avoiding
+    module-level Config creation that bypasses the DI container.
+
+    Returns:
+        dict: Security configuration values with defaults.
+    """
+    from ..config import Config
+    config = Config()
+    return {
+        'max_file_size': config.get_security_config('max_file_size') or (100 * 1024 * 1024),
+        'max_path_length': config.get_security_config('max_path_length') or 4096,
+        'allowed_extensions': set(config.get_security_config('allowed_extensions') or ['.json', '.yaml', '.yml', '.txt', '.md', '.csv']),
+        'rate_limit_window': config.get_security_config('rate_limit', 'window_seconds') or 60,
+        'rate_limit_max_requests': config.get_security_config('rate_limit', 'max_requests') or 100,
+    }
+
+
+# Public getter functions for lazy-loaded security configuration
+def get_max_file_size() -> int:
+    """Get maximum allowed file size in bytes."""
+    return _get_security_config()['max_file_size']
+
+def get_max_path_length() -> int:
+    """Get maximum allowed path length."""
+    return _get_security_config()['max_path_length']
+
+def get_allowed_extensions() -> set:
+    """Get set of allowed file extensions."""
+    return _get_security_config()['allowed_extensions']
+
+def get_rate_limit_window() -> int:
+    """Get rate limit window in seconds."""
+    return _get_security_config()['rate_limit_window']
+
+def get_rate_limit_max_requests() -> int:
+    """Get maximum requests per rate limit window."""
+    return _get_security_config()['rate_limit_max_requests']
+
+# Pre-compiled regex pattern for suspicious path patterns
+# Matches: parent dir (..), home dir (~), env vars ($, %), null byte
+_SUSPICIOUS_PATH_PATTERN = re.compile(r'(\.\.|~|\$|%|\x00)')
 
 
 class PathValidator:
@@ -77,31 +116,25 @@ class PathValidator:
         path_obj = Path(path)
 
         # Check path length
-        if len(str(path_obj)) > MAX_PATH_LENGTH:
+        max_path_len = get_max_path_length()
+        if len(str(path_obj)) > max_path_len:
             raise ValueValidationError(
                 "path",
                 str(path_obj),
-                f"Path length must be less than {MAX_PATH_LENGTH} characters"
+                f"Path length must be less than {max_path_len} characters"
             )
 
-        # Check for suspicious patterns
+        # Check for suspicious patterns using pre-compiled regex
         path_str = str(path_obj)
-        suspicious_patterns = [
-            r'\.\.',  # Parent directory reference
-            r'~',     # Home directory reference
-            r'\$',    # Environment variable
-            r'%',     # Windows environment variable
-            r'\x00',  # Null byte
-        ]
-
-        for pattern in suspicious_patterns:
-            if re.search(pattern, path_str):
-                logger.warning(f"Suspicious pattern detected in path: {path_str}")
-                raise ValidationError(
-                    f"Path contains suspicious pattern: {pattern}",
-                    details={"path": path_str, "pattern": pattern},
-                    suggestion="Use absolute paths without special characters"
-                )
+        match = _SUSPICIOUS_PATH_PATTERN.search(path_str)
+        if match:
+            pattern = match.group(1)
+            logger.warning(f"Suspicious pattern detected in path: {path_str}")
+            raise ValidationError(
+                f"Path contains suspicious pattern: {pattern}",
+                details={"path": path_str, "pattern": pattern},
+                suggestion="Use absolute paths without special characters"
+            )
 
         # Enhanced symlink detection and resolution
         try:
@@ -231,7 +264,7 @@ class PathValidator:
         """
         validated_path = self.validate_path(path)
 
-        extensions = allowed_extensions or ALLOWED_EXTENSIONS
+        extensions = allowed_extensions or get_allowed_extensions()
         file_ext = validated_path.suffix.lower()
 
         if file_ext not in extensions:
@@ -247,14 +280,14 @@ class PathValidator:
 class FileSizeValidator:
     """Validates file sizes to prevent memory exhaustion."""
 
-    def __init__(self, max_size: int = MAX_FILE_SIZE):
+    def __init__(self, max_size: Optional[int] = None):
         """
         Initialize the FileSizeValidator.
 
         Args:
-            max_size: Maximum allowed file size in bytes.
+            max_size: Maximum allowed file size in bytes. Uses config default if None.
         """
-        self.max_size = max_size
+        self.max_size = max_size if max_size is not None else get_max_file_size()
 
     def validate_file_size(self, path: Union[str, Path]) -> int:
         """
@@ -351,15 +384,19 @@ class InputSanitizer:
 class RateLimiter:
     """Simple rate limiter to prevent abuse."""
 
-    def __init__(self, max_requests: int = RATE_LIMIT_MAX_REQUESTS,
-                 window_seconds: int = RATE_LIMIT_WINDOW):
+    def __init__(self, max_requests: Optional[int] = None,
+                 window_seconds: Optional[int] = None):
         """
         Initialize the RateLimiter.
 
         Args:
-            max_requests: Maximum number of requests allowed in the window.
-            window_seconds: Time window in seconds.
+            max_requests: Maximum number of requests allowed in the window. Uses config default if None.
+            window_seconds: Time window in seconds. Uses config default if None.
         """
+        if max_requests is None:
+            max_requests = get_rate_limit_max_requests()
+        if window_seconds is None:
+            window_seconds = get_rate_limit_window()
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.requests = defaultdict(list)
@@ -437,8 +474,57 @@ def generate_file_hash(path: Union[str, Path], algorithm: str = 'sha256') -> str
     return hash_obj.hexdigest()
 
 
-# Create global instances for convenience
-default_path_validator = PathValidator()
-default_file_size_validator = FileSizeValidator()
-default_input_sanitizer = InputSanitizer()
-default_rate_limiter = RateLimiter()
+# Lazy global instances - created on first access instead of at module import
+_default_path_validator = None
+_default_file_size_validator = None
+_default_input_sanitizer = None
+_default_rate_limiter = None
+
+
+def get_default_path_validator() -> PathValidator:
+    """Get the default PathValidator instance (lazy-loaded)."""
+    global _default_path_validator
+    if _default_path_validator is None:
+        _default_path_validator = PathValidator()
+    return _default_path_validator
+
+
+def get_default_file_size_validator() -> FileSizeValidator:
+    """Get the default FileSizeValidator instance (lazy-loaded)."""
+    global _default_file_size_validator
+    if _default_file_size_validator is None:
+        _default_file_size_validator = FileSizeValidator()
+    return _default_file_size_validator
+
+
+def get_default_input_sanitizer() -> InputSanitizer:
+    """Get the default InputSanitizer instance (lazy-loaded)."""
+    global _default_input_sanitizer
+    if _default_input_sanitizer is None:
+        _default_input_sanitizer = InputSanitizer()
+    return _default_input_sanitizer
+
+
+def get_default_rate_limiter() -> RateLimiter:
+    """Get the default RateLimiter instance (lazy-loaded)."""
+    global _default_rate_limiter
+    if _default_rate_limiter is None:
+        _default_rate_limiter = RateLimiter()
+    return _default_rate_limiter
+
+
+# Module-level __getattr__ for lazy attribute access (Python 3.7+)
+# This enables backwards-compatible access like `from security import default_path_validator`
+_LAZY_ATTRIBUTES = {
+    'default_path_validator': get_default_path_validator,
+    'default_file_size_validator': get_default_file_size_validator,
+    'default_input_sanitizer': get_default_input_sanitizer,
+    'default_rate_limiter': get_default_rate_limiter,
+}
+
+
+def __getattr__(name: str):
+    """Lazy module attribute access for default instances."""
+    if name in _LAZY_ATTRIBUTES:
+        return _LAZY_ATTRIBUTES[name]()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
