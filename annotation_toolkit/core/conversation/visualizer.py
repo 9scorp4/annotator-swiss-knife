@@ -27,23 +27,36 @@ from ...utils.xml.formatter import XmlFormatter
 
 
 class TTLCache:
-    """LRU cache with time-to-live expiration."""
+    """LRU cache with time-to-live expiration and automatic cleanup."""
 
-    def __init__(self, max_size: int = 128, ttl_seconds: int = 300):
+    def __init__(self, max_size: int = 128, ttl_seconds: int = 300, cleanup_interval: int = 60):
         """
         Initialize TTL cache.
 
         Args:
             max_size: Maximum number of items in cache.
             ttl_seconds: Time-to-live in seconds for cached items.
+            cleanup_interval: Seconds between automatic cleanup checks.
         """
         self.max_size = max_size
         self.ttl_seconds = ttl_seconds
+        self.cleanup_interval = cleanup_interval
         self.cache = OrderedDict()
         self.timestamps = {}
+        self._last_cleanup = time.time()
+
+    def _maybe_cleanup(self) -> None:
+        """Trigger cleanup if enough time has passed since last cleanup."""
+        now = time.time()
+        if now - self._last_cleanup > self.cleanup_interval:
+            self.cleanup_expired()
+            self._last_cleanup = now
 
     def get(self, key: str) -> Optional[Any]:
         """Get item from cache if valid."""
+        # Periodically clean up expired items
+        self._maybe_cleanup()
+
         if key not in self.cache:
             return None
 
