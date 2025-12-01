@@ -74,7 +74,8 @@ class PerformanceProfiler:
             max_history: Maximum number of timing records to keep per function.
         """
         self.max_history = max_history
-        self._stats: Dict[str, List[float]] = defaultdict(list)
+        # Use deque with maxlen for O(1) append with automatic eviction
+        self._stats: Dict[str, deque] = {}
         self._lock = threading.Lock()
         self._enabled = True
 
@@ -102,12 +103,10 @@ class PerformanceProfiler:
             return
 
         with self._lock:
-            timings = self._stats[name]
-            timings.append(duration)
-
-            # Keep only recent timings
-            if len(timings) > self.max_history:
-                timings.pop(0)
+            # Create deque with maxlen on first access (automatic eviction)
+            if name not in self._stats:
+                self._stats[name] = deque(maxlen=self.max_history)
+            self._stats[name].append(duration)
 
     def get_stats(self, name: str) -> Optional[ProfileStats]:
         """
@@ -156,7 +155,7 @@ class PerformanceProfiler:
             std_dev=std_dev,
             percentile_95=percentile_95,
             percentile_99=percentile_99,
-            recent_times=timings[-10:]  # Last 10 timings
+            recent_times=list(timings)[-10:]  # Last 10 timings (convert deque to list for slicing)
         )
 
     def get_all_stats(self) -> Dict[str, ProfileStats]:
