@@ -7,12 +7,12 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 # Get the absolute path to the project root directory
 # When running as a spec file, we need to use a different approach
 # since __file__ is not defined
-current_dir = os.getcwd()
+current_dir = Path(os.getcwd())
 # Assuming the build script is run from the project root or scripts/build directory
-if current_dir.endswith('scripts/build'):
-    project_root = os.path.abspath(os.path.join(current_dir, '../..'))
+if current_dir.name == 'build' and current_dir.parent.name == 'scripts':
+    project_root = str(current_dir.parent.parent)
 else:
-    project_root = current_dir
+    project_root = str(current_dir)
 
 # Add project root to sys.path to import annotation_toolkit
 sys.path.insert(0, project_root)
